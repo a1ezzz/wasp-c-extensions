@@ -1,0 +1,36 @@
+{
+	"package": "wasp-c-extensions",
+	"homepage": "https://github.com/a1ezzz/wasp-c-extensions",
+	"brief_description": "A library with bunch of CPython extensions",
+	"author": "Ildar Gafurov",
+	"author_email": "dev@binblob.com",
+	"maintainer": "Ildar Gafurov",
+	"maintainer_email": "dev@binblob.com",
+	"numeric_version": "0.0.0.1",
+	"dev_suffix": true,
+	"credits": ["Ildar Gafurov"],
+	"license": "GNU Lesser General Public License v3",
+	"copyright": "Copyright 2018, The Wasp-c-extensions",
+	"status": "Development",
+	
+	"readme_file": "README.md",
+	
+	"pypi": {
+		"keywords": ["wasp", "c-extensions", "threads"],
+		"classifiers": [
+			"Development Status :: 2 - Pre-Alpha",
+			"Intended Audience :: Developers",
+			"License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+			"Operating System :: OS Independent",
+			"Programming Language :: Python",
+			"Programming Language :: Python :: 3.4",
+			"Programming Language :: Python :: 3.5",
+			"Programming Language :: Python :: 3.6",
+			"Programming Language :: Python :: 3 :: Only",
+			"Programming Language :: Python :: Implementation :: CPython",
+			"Programming Language :: Python :: Implementation :: PyPy",
+			"Topic :: Software Development :: Libraries",
+			"Topic :: Software Development :: Libraries :: Python Modules"
+		]
+	}
+}
