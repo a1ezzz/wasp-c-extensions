@@ -32,5 +32,24 @@
 			"Topic :: Software Development :: Libraries",
 			"Topic :: Software Development :: Libraries :: Python Modules"
 		]
-	}
+	},
+	"extensions": [
+		{
+			"module_name": "wasp_c_extensions.threads",
+			"sources": [
+				"wasp_c_extensions/_threads/module.c",
+				"wasp_c_extensions/_threads/atomic.c"
+			],
+			"depends": [
+				"wasp_c_extensions/_threads/atomic.h",
+				"wasp_c_extensions/_threads/common.h"
+			],
+			"define_macros": [
+				["__PACKAGE_NAME__", "wasp_c_extensions"],
+				["__MODULE_NAME__", "threads"],
+				["__ATOMIC_COUNTER_NAME__", "WAtomicCounter"],
+				["__WASP_DEBUG__", "1"]
+			]
+		}
+	]
 }

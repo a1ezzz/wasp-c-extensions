@@ -43,5 +43,6 @@ if __name__ == "__main__":
 			define_macros=[
 				tuple(y) for y in x['define_macros']
 			] if 'define_macros' in x else None,
+			depends=x['depends'] if 'depends' in x else None
 		) for x in __extension__] if __extension__ is not None else None
 	)
