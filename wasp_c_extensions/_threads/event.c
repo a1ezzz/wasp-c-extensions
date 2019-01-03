@@ -304,6 +304,10 @@ static PyObject* WPThreadEvent_Object_set(WPThreadEvent_Object* self, PyObject *
 		Py_RETURN_NONE;
 	}
 
+	if (self->__is_set){
+		Py_RETURN_NONE;
+	}
+
 	__WASP_BEGIN_ALLOW_THREADS__
 
 	__WASP_DEBUG_PRINTF__("Acquiring a lock");
@@ -312,7 +316,9 @@ static PyObject* WPThreadEvent_Object_set(WPThreadEvent_Object* self, PyObject *
 	__WASP_DEBUG_PRINTF__("Notifying a conditional variable");
 	pthread_cond_signal(&self->__conditional_variable);
 
-	printf("Freeing a lock");
+	self->__is_set = true;
+
+	__WASP_DEBUG_PRINTF__("Freeing a lock");
 	pthread_mutex_unlock(&self->__mutex);
 
 	__WASP_END_ALLOW_THREADS__
@@ -333,9 +339,6 @@ static PyObject* WPThreadEvent_Object_is_set(WPThreadEvent_Object* self, PyObjec
 
 static int increase_timespec(struct timespec* base_value, double increment, struct timespec* result)
 {
-
-	__WASP_DEBUG_PRINTF__("aaaaa: %f", increment);
-
 	double nsec_in_sec = pow(10, 9);
 	double seconds = floor(increment);
 	double nano_seconds = ((increment - seconds) * nsec_in_sec) + base_value->tv_nsec;
