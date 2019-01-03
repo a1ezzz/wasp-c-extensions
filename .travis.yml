@@ -15,6 +15,10 @@ language: python
 
 matrix:
   include:
+
+    - dist: trusty
+      python: "3.1"
+
     - dist: trusty
       python: "3.2"
 
@@ -30,10 +34,16 @@ matrix:
     - dist: xenial
       python: "3.7"
 
+    - pypy: "3.5"
+
 install:
   - pip install -r dev-requirements.txt
   - pip install -r requirements.txt
   - pip install -v .
+
+before_script:
+
+  - [[ "$TOXENV" == "py3.3" ]] && pip install pytest==2.9
 
 script:
   - cd tests
