@@ -26,11 +26,25 @@
 #define __STR_MODULE_NAME__ __STR_FN_CALL__(__MODULE_NAME__)
 #define __STR_PACKAGE_NAME__ __STR_FN_CALL__(__PACKAGE_NAME__)
 #define __STR_ATOMIC_COUNTER_NAME__ __STR_FN_CALL__(__ATOMIC_COUNTER_NAME__)
+#define __STR_PTHREAD_EVENT_NAME__ __STR_FN_CALL__(__PTHREAD_EVENT_NAME__)
 
 #ifdef __WASP_DEBUG__
-#define __WASP_DEBUG_PRINTF__(msg) printf(msg"\n")
+#define __WASP_DEBUG_PRINTF__(msg,...) printf("At file: "__FILE__", at line: %i: "msg"\n", __LINE__, ##__VA_ARGS__)
 #else
-#define __WASP_DEBUG_PRINTF__(msg)
+#define __WASP_DEBUG_PRINTF__(msg,...)
 #endif // __WASP_DEBUG__
+
+#define __WASP_DEBUG_FN_CALL__ __WASP_DEBUG_PRINTF__("Function call: %s", __PRETTY_FUNCTION__)
+
+#define __WASP_BEGIN_ALLOW_THREADS__ \
+	__WASP_DEBUG_PRINTF__("Threads are going to be concurrent"); \
+	Py_BEGIN_ALLOW_THREADS \
+	__WASP_DEBUG_PRINTF__("Concurrent threads are allowed from now");
+
+#define __WASP_END_ALLOW_THREADS__ \
+	__WASP_DEBUG_PRINTF__("Concurrent threads are going to be disabled"); \
+	Py_END_ALLOW_THREADS \
+	__WASP_DEBUG_PRINTF__("Concurrent threads are disabled from now");
+
 
 #endif // __WASP_C_EXTENSIONS__THREADS_COMMON_H__
