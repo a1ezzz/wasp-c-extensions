@@ -22,7 +22,7 @@
 
 #include "common.h"
 #include "atomic.h"
-
+#include "event.h"
 
 #define __PYINIT_MODULE_NAME_GEN_FN__(M) PyInit_ ## M
 #define __PYINIT_MODULE_NAME_GEN_FN_CALL__(M) __PYINIT_MODULE_NAME_GEN_FN__(M)
@@ -54,10 +54,15 @@ PyMODINIT_FUNC __PYINIT_MAIN_FN__ (void) {
 
 	PyObject *m;
 
-	if (PyType_Ready(&WAtomicCounter_Type) < 0)
+	if (PyType_Ready(&WAtomicCounter_Type) < 0){
 		return NULL;
-
+	}
 	__WASP_DEBUG_PRINTF__("Type \""__STR_ATOMIC_COUNTER_NAME__"\" was initialized");
+
+	if (PyType_Ready(&WPThreadEvent_Type) < 0){
+		return NULL;
+	}
+	__WASP_DEBUG_PRINTF__("Type \""__STR_PTHREAD_EVENT_NAME__"\" was initialized");
 
 	m = PyModule_Create(&threads_module);
 	if (m == NULL)
@@ -67,8 +72,11 @@ PyMODINIT_FUNC __PYINIT_MAIN_FN__ (void) {
 
 	Py_INCREF(&WAtomicCounter_Type);
 	PyModule_AddObject(m, __STR_ATOMIC_COUNTER_NAME__, (PyObject*) &WAtomicCounter_Type);
-
         __WASP_DEBUG_PRINTF__("Type \""__STR_ATOMIC_COUNTER_NAME__"\" was linked");
+
+	Py_INCREF(&WPThreadEvent_Type);
+	PyModule_AddObject(m, __STR_PTHREAD_EVENT_NAME__, (PyObject*) &WPThreadEvent_Type);
+        __WASP_DEBUG_PRINTF__("Type \""__STR_PTHREAD_EVENT_NAME__"\" was linked");
 
 	return m;
 }
