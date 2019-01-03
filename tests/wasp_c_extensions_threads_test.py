@@ -2,7 +2,7 @@
 import pytest
 import threading
 
-from wasp_c_extensions.threads import WAtomicCounter
+from wasp_c_extensions.threads import WAtomicCounter, WPThreadEvent
 
 
 class TestWAtomicCounter:
@@ -48,3 +48,52 @@ class TestWAtomicCounter:
 			th.join()
 
 		assert(c.__int__() == (self.__threads__ * self.__repeats__))
+
+
+class TestWPThreadEvent:
+
+	__threads__ = 50
+	__repeats__ = 50
+
+	def test(self):
+		event = WPThreadEvent()
+		assert(event.is_set() is False)
+		event.clear()
+		assert(event.is_set() is False)
+
+		event.set()
+		assert(event.is_set() is True)
+
+		event.set()
+		assert(event.is_set() is True)
+
+	def test_multi_threading(self):
+
+		self.test_counter = 0
+
+		events = [WPThreadEvent() for _ in range(self.__threads__)]
+
+		def threading_fn_gen(wait_event_obj, set_event_obj):
+			def threading_fn():
+				for _ in range(self.__repeats__):
+					wait_event_obj.wait()
+					wait_event_obj.clear()
+					self.test_counter += 1
+					set_event_obj.set()
+			return threading_fn
+
+		threads = [
+			threading.Thread(target=threading_fn_gen(
+				events[i], events[(i + 1) % self.__threads__]
+			)) for i in range(self.__threads__)
+		]
+
+		for th in threads:
+			th.start()
+
+		events[0].set()
+
+		for th in threads:
+			th.join()
+
+		assert(self.test_counter == (self.__threads__ * self.__repeats__))
