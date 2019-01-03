@@ -11,6 +11,8 @@
 #  - "3.7"
 #  - "pypy3.5"
 
+language: python
+
 matrix:
   include:
     - dist: trusty
