@@ -118,11 +118,11 @@ static void WPThreadEvent_Type_dealloc(WPThreadEvent_Object* self) {
         	PyObject_ClearWeakRefs((PyObject *) self);
 
 	if (pthread_mutex_destroy(&self->__mutex) != 0){
-		PyErr_WriteUnraisable(self);
+		PyErr_WriteUnraisable((PyObject*) self);
 	}
 
 	if (pthread_cond_destroy(&self->__conditional_variable) != 0){
-		PyErr_WriteUnraisable(self);
+		PyErr_WriteUnraisable((PyObject*) self);
 	}
 
 	Py_TYPE(self)->tp_free((PyObject *) self);
