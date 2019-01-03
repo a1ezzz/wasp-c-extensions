@@ -25,12 +25,12 @@ PyObject* __py_int_add_fn__ = 0;
 static PyObject* WAtomicCounter_Type_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
 static void WAtomicCounter_Type_dealloc(WAtomicCounter_Object* self);
 static int WAtomicCounter_Object_init(WAtomicCounter_Object *self, PyObject *args, PyObject *kwargs);
-static PyObject* WAtomicCounter_Object____int__(WAtomicCounter_Object* self, PyObject *args);
+static PyObject* WAtomicCounter_Object___int__(WAtomicCounter_Object* self, PyObject *args);
 static PyObject* WAtomicCounter_Object_increase_counter(WAtomicCounter_Object* self, PyObject* args);
 
 static PyMethodDef WAtomicCounter_Type_methods[] = {
 	{
-		"__int__", (PyCFunction) WAtomicCounter_Object____int__, METH_NOARGS,
+		"__int__", (PyCFunction) WAtomicCounter_Object___int__, METH_NOARGS,
 		"Return reference to integer object that is used for internal counter value"
 	},
 	{
@@ -60,6 +60,8 @@ PyTypeObject WAtomicCounter_Type = {
 
 static PyObject* WAtomicCounter_Type_new(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
 
+	__WASP_DEBUG_PRINTF__("Allocation of \""__STR_ATOMIC_COUNTER_NAME__"\" object");
+
 	WAtomicCounter_Object* self;
 	self = (WAtomicCounter_Object *) type->tp_alloc(type, 0);
 
@@ -71,43 +73,62 @@ static PyObject* WAtomicCounter_Type_new(PyTypeObject* type, PyObject* args, PyO
 		}
 	}
 
+	__WASP_DEBUG_PRINTF__("Object \""__STR_ATOMIC_COUNTER_NAME__"\" was allocated");
+
 	return (PyObject *) self;
 }
 
 static int WAtomicCounter_Object_init(WAtomicCounter_Object *self, PyObject *args, PyObject *kwargs) {
 
+	__WASP_DEBUG_PRINTF__("Initialization of \""__STR_ATOMIC_COUNTER_NAME__"\" object");
+
 	static char *kwlist[] = {"value", NULL};
 	PyObject* value = NULL;
 
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O!", kwlist,  &PyLong_Type, &value))
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O!", kwlist,  &PyLong_Type, &value)) {
 		return -1;
+	}
 
 	if (value) {
 		Py_DECREF(self->__int_value);
 		self->__int_value = (PyLongObject*) value;
 		Py_INCREF(self->__int_value);
 	}
+
+	__WASP_DEBUG_PRINTF__("Object \""__STR_ATOMIC_COUNTER_NAME__"\" was initialized");
+
 	return 0;
 }
 
 static void WAtomicCounter_Type_dealloc(WAtomicCounter_Object* self) {
+
+	__WASP_DEBUG_PRINTF__("Deallocation of \""__STR_ATOMIC_COUNTER_NAME__"\" object");
+
 	if (self->weakreflist != NULL)
         	PyObject_ClearWeakRefs((PyObject *) self);
 
 	Py_DECREF(self->__int_value);
 	Py_TYPE(self)->tp_free((PyObject *) self);
+
+	__WASP_DEBUG_PRINTF__("Object \""__STR_ATOMIC_COUNTER_NAME__"\" was deallocated");
 }
 
-static PyObject* WAtomicCounter_Object____int__(WAtomicCounter_Object* self, PyObject *args) {
+static PyObject* WAtomicCounter_Object___int__(WAtomicCounter_Object* self, PyObject *args) {
+
+	__WASP_DEBUG_PRINTF__("A call to \""__STR_ATOMIC_COUNTER_NAME__".__int__\" method was made");
+
 	Py_INCREF(self->__int_value);
 	return (PyObject*) self->__int_value;
 }
 
 static PyObject* WAtomicCounter_Object_increase_counter(WAtomicCounter_Object* self, PyObject* args)
 {
+	__WASP_DEBUG_PRINTF__("A call to \""__STR_ATOMIC_COUNTER_NAME__".increase_counter\" method was made");
+
 	PyObject* increment;
-	if (!PyArg_ParseTuple(args, "O!", &PyLong_Type, &increment))
+	if (!PyArg_ParseTuple(args, "O!", &PyLong_Type, &increment)){
 		return NULL;
+	}
 	Py_INCREF(increment);
 
 	PyObject* increase_fn_args = PyTuple_Pack(2, self->__int_value, increment);
