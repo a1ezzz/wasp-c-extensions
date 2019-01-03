@@ -4,7 +4,10 @@ language: python
 matrix:
   include:
 
-    - dist: trusty
+    - dist: precise
+      python: "3.0"
+
+    - dist: precise
       python: "3.1"
 
     - dist: trusty
@@ -31,9 +34,7 @@ install:
 
 before_script:
 
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "3.1" ]]; then pip install pytest==2.9; fi
-
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "3.2" ]]; then pip install pytest==2.9; fi
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "3.2" ]]; then pip install pytest==3.0; fi
 
   - if [[ "$TRAVIS_PYTHON_VERSION" == "3.3" ]]; then pip install pytest==3.0; fi
 
