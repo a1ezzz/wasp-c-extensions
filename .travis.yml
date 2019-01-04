@@ -32,7 +32,7 @@ before_script:
 
   - if [[ "$TRAVIS_PYTHON_VERSION" == "3.3" ]]; then pip install pytest==3.0; fi
 
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "3.2" ]]; then pip install pytest==2.9 pytest-html=1.19; fi
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "3.2" ]]; then pip install pytest==2.9 pytest-html==1.19; fi
 
 script:
   - cd tests
