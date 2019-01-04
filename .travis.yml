@@ -7,6 +7,9 @@ matrix:
 # travis does not support Python 3.1 and there is a problem with pytest and Python 3.2 on travis
 
     - dist: trusty
+      python: "3.2"
+
+    - dist: trusty
       python: "3.3"
 
     - python: "3.4"
