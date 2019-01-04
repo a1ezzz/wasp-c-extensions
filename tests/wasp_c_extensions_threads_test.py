@@ -52,6 +52,8 @@ class TestWAtomicCounter:
 
 class TestWPThreadEvent:
 
+	__wait_test_timeout__ = 3
+
 	__threads__ = 50
 	__repeats__ = 50
 
@@ -64,8 +66,16 @@ class TestWPThreadEvent:
 		event.set()
 		assert(event.is_set() is True)
 
+		assert(event.wait() is True)
+
 		event.set()
 		assert(event.is_set() is True)
+
+		event.clear()
+		assert(event.is_set() is False)
+
+		assert(event.wait(self.__wait_test_timeout__) is False)
+		assert(event.is_set() is False)
 
 	def test_multi_threading(self):
 
