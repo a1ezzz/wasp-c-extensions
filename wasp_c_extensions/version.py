@@ -27,36 +27,10 @@ import subprocess
 with open(os.path.join(os.path.dirname(__file__), 'package.json'), 'r') as f:
 	__package_data__ = json.load(f)
 
-
-def package_version():
-
-	result = __package_data__['numeric_version']
-	if __package_data__['dev_suffix'] is True:
-		try:
-
-			cwd = os.getcwd()
-			try:
-				os.chdir(os.path.dirname(__file__))
-				# check_output is function that defined in python3 and python2
-				with open(os.devnull, 'w') as f:  # python2 does not have subprocess.DEVNULL
-					output = subprocess.check_output(["git", "rev-parse", "HEAD"], stderr=f)
-
-				# check_output in python3 returns bytes, python2 - str
-				if isinstance(output, bytes) is True:
-					output = output.decode()
-				result += '.dev%s' % output[:7]
-			finally:
-				os.chdir(cwd)
-
-		except (subprocess.CalledProcessError, OSError):
-			result += '--'
-	return result
-
-
 __author__ = __package_data__['author']
 __email__ = __package_data__['author_email']
 __credits__ = __package_data__['credits']
 __license__ = __package_data__['license']
 __copyright__ = __package_data__['copyright']
 __status__ = __package_data__['status']
-__version__ = package_version()
+__version__ = __package_data__['version']

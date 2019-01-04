@@ -16,7 +16,7 @@ __extension__ = __package_data__['extensions'] if 'extensions' in __package_data
 if __name__ == "__main__":
 	setup(
 		name=__package_data__['package'],
-		version=__package_data__['numeric_version'],
+		version=__package_data__['version'],
 		author=__package_data__['author'],
 		author_email=__package_data__['author_email'],
 		maintainer=__package_data__['maintainer'],
