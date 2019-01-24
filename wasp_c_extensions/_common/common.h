@@ -1,6 +1,6 @@
-// wasp_c_extensions/_threads/common.h
+// wasp_c_extensions/_common/common.h
 //
-//Copyright (C) 2016 the wasp-c-extensions authors and contributors
+//Copyright (C) 2018 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
 //
 //This file is part of wasp-c-extensions.
@@ -18,15 +18,12 @@
 //You should have received a copy of the GNU Lesser General Public License
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef __WASP_C_EXTENSIONS__THREADS_COMMON_H__
-#define __WASP_C_EXTENSIONS__THREADS_COMMON_H__
+#ifndef __WASP_C_EXTENSIONS__COMMON_COMMON_H__
+#define __WASP_C_EXTENSIONS__COMMON_COMMON_H__
 
 #define __STR_FN__(M) #M
 #define __STR_FN_CALL__(M) __STR_FN__(M)
-#define __STR_MODULE_NAME__ __STR_FN_CALL__(__MODULE_NAME__)
 #define __STR_PACKAGE_NAME__ __STR_FN_CALL__(__PACKAGE_NAME__)
-#define __STR_ATOMIC_COUNTER_NAME__ __STR_FN_CALL__(__ATOMIC_COUNTER_NAME__)
-#define __STR_PTHREAD_EVENT_NAME__ __STR_FN_CALL__(__PTHREAD_EVENT_NAME__)
 
 #ifdef __WASP_DEBUG__
 #define __WASP_DEBUG_PRINTF__(msg,...) printf("At file: "__FILE__", at line: %i: "msg"\n", __LINE__, ##__VA_ARGS__)
@@ -46,5 +43,15 @@
 	Py_END_ALLOW_THREADS \
 	__WASP_DEBUG_PRINTF__("Concurrent threads are disabled from now");
 
+#define __PYINIT_MODULE_NAME_GEN_FN__(M) PyInit_ ## M
+#define __PYINIT_MODULE_NAME_GEN_FN_CALL__(M) __PYINIT_MODULE_NAME_GEN_FN__(M)
 
-#endif // __WASP_C_EXTENSIONS__THREADS_COMMON_H__
+#define __STR_THREADS_MODULE_NAME__ __STR_FN_CALL__(__THREADS_MODULE_NAME__)
+#define __PYINIT_THREADS_MAIN_FN__ __PYINIT_MODULE_NAME_GEN_FN_CALL__(__THREADS_MODULE_NAME__)
+
+#define __STR_ATOMIC_COUNTER_NAME__ __STR_FN_CALL__(__ATOMIC_COUNTER_NAME__)
+#define __STR_PTHREAD_EVENT_NAME__ __STR_FN_CALL__(__PTHREAD_EVENT_NAME__)
+
+#define __STR_MCQUEUE_NAME__ __STR_FN_CALL__(__MCQUEUE_NAME__)
+
+#endif // __WASP_C_EXTENSIONS__COMMON_COMMON_H__

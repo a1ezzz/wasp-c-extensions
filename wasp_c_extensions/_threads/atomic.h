@@ -1,6 +1,6 @@
 // wasp_c_extensions/_threads/atomic.h
 //
-//Copyright (C) 2016 the wasp-c-extensions authors and contributors
+//Copyright (C) 2018 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
 //
 //This file is part of wasp-c-extensions.
@@ -24,7 +24,7 @@
 #include <Python.h>
 #include <stddef.h>
 
-#include "common.h"
+#include "_common/common.h"
 
 PyObject* __py_int_add_fn__;
 
@@ -33,7 +33,7 @@ PyTypeObject WAtomicCounter_Type;
 typedef struct {
 	PyObject_HEAD
 	PyLongObject* __int_value;
-	PyObject *weakreflist;
+	PyObject *__weakreflist;
 } WAtomicCounter_Object;
 
 #endif // __WASP_C_EXTENSIONS__THREADS_ATOMIC_H__

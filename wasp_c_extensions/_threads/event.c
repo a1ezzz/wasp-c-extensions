@@ -1,6 +1,6 @@
 // wasp_c_extensions/_threads/event.c
 //
-//Copyright (C) 2016 the wasp-c-extensions authors and contributors
+//Copyright (C) 2018 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
 //
 //This file is part of wasp-c-extensions.
@@ -37,7 +37,7 @@ static PyMethodDef WPThreadEvent_Type_methods[] = {
 
 	{
 		"wait", (PyCFunction) WPThreadEvent_Object_wait, METH_VARARGS | METH_KEYWORDS,
-		"Wait for a event to come. If the event flag was set and is not cleared then this function returns \n"
+		"Wait for a event to come. If the event flag was set and is not cleared then this function returns\n"
 		"immediately. Returns True if event occurred and False otherwise\n"
 		"\n"
 		":param timeout: time in seconds during which an event will be awaited (default is no timeout)\n"
@@ -72,7 +72,7 @@ static PyMethodDef WPThreadEvent_Type_methods[] = {
 
 PyTypeObject WPThreadEvent_Type = {
 	PyVarObject_HEAD_INIT(NULL, 0)
-	.tp_name = __STR_PACKAGE_NAME__"."__STR_MODULE_NAME__"."__STR_PTHREAD_EVENT_NAME__,
+	.tp_name = __STR_PACKAGE_NAME__"."__STR_THREADS_MODULE_NAME__"."__STR_PTHREAD_EVENT_NAME__,
 	.tp_doc = "threading.Event a-like object implemented with Linux pthread library",
 	.tp_basicsize = sizeof(WPThreadEvent_Type),
 	.tp_itemsize = 0,
@@ -81,7 +81,7 @@ PyTypeObject WPThreadEvent_Type = {
 	.tp_init = (initproc) WPThreadEvent_Object_init,
 	.tp_dealloc = (destructor) WPThreadEvent_Type_dealloc,
 	.tp_methods = WPThreadEvent_Type_methods,
-	.tp_weaklistoffset = offsetof(WPThreadEvent_Object, weakreflist)
+	.tp_weaklistoffset = offsetof(WPThreadEvent_Object, __weakreflist)
 };
 
 static PyObject* WPThreadEvent_Type_new(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
@@ -92,16 +92,20 @@ static PyObject* WPThreadEvent_Type_new(PyTypeObject* type, PyObject* args, PyOb
 	self = (WPThreadEvent_Object *) type->tp_alloc(type, 0);
 
 	if (self == NULL) {
-		return NULL;
+		return PyErr_NoMemory();
 	}
 
 	self->__is_set = false;
 
 	if (pthread_mutex_init(&self->__mutex, NULL) != 0){
+		Py_DECREF(self);
+		PyErr_SetString(PyExc_RuntimeError, "Unable to allocate mutex");
 		return NULL;
 	}
 
 	if (pthread_cond_init(&self->__conditional_variable, NULL) != 0){
+		Py_DECREF(self);
+		PyErr_SetString(PyExc_RuntimeError, "Unable to allocate conditional variable");
 		return NULL;
 	}
 
@@ -114,7 +118,7 @@ static void WPThreadEvent_Type_dealloc(WPThreadEvent_Object* self) {
 
 	__WASP_DEBUG_FN_CALL__;
 
-	if (self->weakreflist != NULL)
+	if (self->__weakreflist != NULL)
         	PyObject_ClearWeakRefs((PyObject *) self);
 
 	if (pthread_mutex_destroy(&self->__mutex) != 0){
@@ -138,13 +142,23 @@ static int WPThreadEvent_Object_init(WPThreadEvent_Object *self, PyObject *args,
 	PyObject* py_error_timeout = NULL;
 	double c_error_timeout = NAN;
 
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O", kwlist, &py_error_timeout)){
+	if (! PyArg_ParseTupleAndKeywords(args, kwargs, "|O", kwlist, &py_error_timeout)){
 		return 0;
 	}
 
-	if (py_error_timeout) {
+	if (py_error_timeout != NULL) {
+
+		Py_INCREF(py_error_timeout);  // NOTE: this ref was not increased by "O"-casting, but it must be
+		// since this is a python function argument
+
 		c_error_timeout = PyFloat_AsDouble(py_error_timeout);
+
+		Py_DECREF(py_error_timeout);  // NOTE: this argument no longer needed
+
 		if (PyErr_Occurred() != NULL) {
+			PyErr_SetString(
+				PyExc_ValueError, "'py_error_poll_timeout' must be able to be converted to C-'double'"
+			);
 			return 0;
 		}
 		self->error_poll_timeout = c_error_timeout;
@@ -183,12 +197,15 @@ static PyObject* WPThreadEvent_Object_wait(WPThreadEvent_Object* self, PyObject 
 
 	__WASP_DEBUG_PRINTF__("Arguments were parsed");
 
-	if (py_timeout) {
+	if (py_timeout != NULL) {
 
 		__WASP_DEBUG_PRINTF__("A timeout was specified");
 
+		Py_INCREF(py_timeout);  // NOTE: '0'-object reference counter must be increased for python function call
 		c_timeout = PyFloat_AsDouble(py_timeout);
+		Py_DECREF(py_timeout);  // NOTE: function argument no longer needed
 		if (PyErr_Occurred() != NULL) {
+			PyErr_SetString(PyExc_ValueError, "'timeout' must be able to be converted to C-'double'");
 			return NULL;
 		}
 
@@ -205,13 +222,11 @@ static PyObject* WPThreadEvent_Object_wait(WPThreadEvent_Object* self, PyObject 
 
 	clock_gettime(CLOCK_REALTIME, &next_poll_time);
 
-	if (!isnan(c_timeout)) {
+	if (! isnan(c_timeout)) {
 		if (increase_timespec(&next_poll_time, c_timeout, &max_poll_time) != 0){
 			__WASP_DEBUG_PRINTF__("Raising an exception!");
 			PyErr_SetString(PyExc_RuntimeError, "The specified polling date time is out of range");
-
 			pthread_mutex_unlock(&self->__mutex);
-
 			return NULL;
 		}
 
@@ -220,14 +235,11 @@ static PyObject* WPThreadEvent_Object_wait(WPThreadEvent_Object* self, PyObject 
 	if (increase_timespec(&next_poll_time, self->error_poll_timeout, &next_poll_time) != 0){
 		__WASP_DEBUG_PRINTF__("Raising an exception!");
 		PyErr_SetString(PyExc_RuntimeError, "The internal polling date time is out of range");
-
 		pthread_mutex_unlock(&self->__mutex);
-
 		return NULL;
 	}
 
 	do {
-
 		__WASP_BEGIN_ALLOW_THREADS__
 
 		if (!isnan(c_timeout)){
@@ -272,7 +284,7 @@ static PyObject* WPThreadEvent_Object_wait(WPThreadEvent_Object* self, PyObject 
 
 		py_errors = PyErr_CheckSignals();
 
-	} while(py_errors == 0);
+	} while (py_errors == 0);
 
 	pthread_mutex_unlock(&self->__mutex);
 

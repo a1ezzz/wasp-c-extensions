@@ -40,19 +40,22 @@
 		{
 			"module_name": "wasp_c_extensions.threads",
 			"sources": [
-				"wasp_c_extensions/_threads/module.c",
+				"wasp_c_extensions/_threads/threads_module.c",
 				"wasp_c_extensions/_threads/atomic.c",
 				"wasp_c_extensions/_threads/event.c"
 			],
 			"depends": [
 				"wasp_c_extensions/_threads/atomic.h",
 				"wasp_c_extensions/_threads/event.h",
-				"wasp_c_extensions/_threads/common.h",
+				"wasp_c_extensions/_common/common.h",
 				"wasp_c_extensions/package.json"
+			],
+			"include_dirs": [
+				"wasp_c_extensions"
 			],
 			"define_macros": [
 				["__PACKAGE_NAME__", "wasp_c_extensions"],
-				["__MODULE_NAME__", "threads"],
+				["__THREADS_MODULE_NAME__", "threads"],
 				["__ATOMIC_COUNTER_NAME__", "WAtomicCounter"],
 				["__PTHREAD_EVENT_NAME__", "WPThreadEvent"],
 				["__DEFAULT_SIGNALS_POLLING_TIMEOUT__", "10"]

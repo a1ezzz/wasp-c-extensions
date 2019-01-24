@@ -1,6 +1,6 @@
 // wasp_c_extensions/_threads/event.h
 //
-//Copyright (C) 2016 the wasp-c-extensions authors and contributors
+//Copyright (C) 2018 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
 //
 //This file is part of wasp-c-extensions.
@@ -27,7 +27,7 @@
 #include <time.h>
 #include <pthread.h>
 
-#include "common.h"
+#include "_common/common.h"
 
 PyTypeObject WPThreadEvent_Type;
 
@@ -37,7 +37,7 @@ typedef struct {
 	double error_poll_timeout;
 	pthread_mutex_t __mutex;
 	pthread_cond_t  __conditional_variable;
-	PyObject *weakreflist;
+	PyObject *__weakreflist;
 } WPThreadEvent_Object;
 
 #endif // __WASP_C_EXTENSIONS__THREADS_EVENT_H__
