@@ -111,6 +111,22 @@ class TestWPThreadEvent:
 		assert(event.awareness_wait(a) is True)
 		assert(event.is_set() is True)
 
+	def test_concurrency(self):
+		event = WPThreadEvent()
+
+		def threading_fn():
+			event.wait()
+
+		threads = [threading.Thread(target=threading_fn) for _ in range(10)]
+
+		for th in threads:
+			th.start()
+
+		event.set()
+
+		for th in threads:
+			th.join()
+
 	def test_multi_threading(self):
 
 		self.test_counter = 0
