@@ -77,6 +77,40 @@ class TestWPThreadEvent:
 		assert(event.wait(self.__wait_test_timeout__) is False)
 		assert(event.is_set() is False)
 
+	def test_awareness(self):
+
+		class A:
+
+			def __init__(self):
+				self.a = True
+
+			def __call__(self, *args, **kwargs):
+				return self.a
+
+		a = A()
+		event = WPThreadEvent()
+		assert(event.is_set() is False)
+
+		assert(event.awareness_wait(a) is True)
+		assert(event.is_set() is True)
+
+		a.a = False
+		assert(event.awareness_wait(a, timeout=0.5) is False)
+		assert(event.is_set() is False)
+
+		th = threading.Thread(target=lambda: event.awareness_wait(a))
+		th.start()
+		assert(a.a is False)
+		assert(event.is_set() is False)
+		event.set()
+		th.join()
+		assert(event.is_set() is True)
+		assert(a.a is False)
+
+		a.a = True
+		assert(event.awareness_wait(a) is True)
+		assert(event.is_set() is True)
+
 	def test_concurrency(self):
 		event = WPThreadEvent()
 
