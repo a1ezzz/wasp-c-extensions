@@ -1,6 +1,6 @@
 // wasp_c_extensions/_threads/event.c
 //
-//Copyright (C) 2018 the wasp-c-extensions authors and contributors
+//Copyright (C) 2018-2019 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
 //
 //This file is part of wasp-c-extensions.
@@ -212,12 +212,6 @@ static PyObject* WPThreadEvent_Object_wait(WPThreadEvent_Object* self, PyObject 
 		__WASP_DEBUG_PRINTF__("Parsed timeout values is: %f", c_timeout);
 	}
 
-	__WASP_BEGIN_ALLOW_THREADS__
-
-	pthread_mutex_lock(&self->__mutex);
-
-	__WASP_END_ALLOW_THREADS__
-
 	__WASP_DEBUG_PRINTF__("Calculating timeouts");
 
 	clock_gettime(CLOCK_REALTIME, &next_poll_time);
@@ -226,7 +220,6 @@ static PyObject* WPThreadEvent_Object_wait(WPThreadEvent_Object* self, PyObject 
 		if (increase_timespec(&next_poll_time, c_timeout, &max_poll_time) != 0){
 			__WASP_DEBUG_PRINTF__("Raising an exception!");
 			PyErr_SetString(PyExc_RuntimeError, "The specified polling date time is out of range");
-			pthread_mutex_unlock(&self->__mutex);
 			return NULL;
 		}
 
@@ -235,7 +228,6 @@ static PyObject* WPThreadEvent_Object_wait(WPThreadEvent_Object* self, PyObject 
 	if (increase_timespec(&next_poll_time, self->error_poll_timeout, &next_poll_time) != 0){
 		__WASP_DEBUG_PRINTF__("Raising an exception!");
 		PyErr_SetString(PyExc_RuntimeError, "The internal polling date time is out of range");
-		pthread_mutex_unlock(&self->__mutex);
 		return NULL;
 	}
 
@@ -250,16 +242,25 @@ static PyObject* WPThreadEvent_Object_wait(WPThreadEvent_Object* self, PyObject 
 		}
 
 		__WASP_DEBUG_PRINTF__("Waiting for a conditional variable");
+		pthread_mutex_lock(&self->__mutex);
 
-		wait_result = pthread_cond_timedwait(&self->__conditional_variable, &self->__mutex, next_time);
+		if (! self->__is_set){
+			wait_result = pthread_cond_timedwait(&self->__conditional_variable, &self->__mutex, next_time);
+		}
 
+		pthread_mutex_unlock(&self->__mutex);
 		__WASP_END_ALLOW_THREADS__
+
+		if (self->__is_set){
+			Py_RETURN_TRUE;
+		}
 
 		if (wait_result == 0){
 			__WASP_DEBUG_PRINTF__("Conditional variable was set");
 			break;
 		}
 		else if (wait_result == ETIMEDOUT){
+
 			__WASP_DEBUG_PRINTF__("Conditional variable was not set during an iteration timeout");
 			if (next_time == (&max_poll_time)){
 				__WASP_DEBUG_PRINTF__("Conditional variable was not set during the specified timeout");
@@ -285,8 +286,6 @@ static PyObject* WPThreadEvent_Object_wait(WPThreadEvent_Object* self, PyObject 
 		py_errors = PyErr_CheckSignals();
 
 	} while (py_errors == 0);
-
-	pthread_mutex_unlock(&self->__mutex);
 
 	if (py_errors != 0){
 		__WASP_DEBUG_PRINTF__("Error condition!");
@@ -316,19 +315,15 @@ static PyObject* WPThreadEvent_Object_set(WPThreadEvent_Object* self, PyObject *
 		Py_RETURN_NONE;
 	}
 
-	if (self->__is_set){
-		Py_RETURN_NONE;
-	}
-
 	__WASP_BEGIN_ALLOW_THREADS__
 
 	__WASP_DEBUG_PRINTF__("Acquiring a lock");
 	pthread_mutex_lock(&self->__mutex);
 
-	__WASP_DEBUG_PRINTF__("Notifying a conditional variable");
-	pthread_cond_signal(&self->__conditional_variable);
-
 	self->__is_set = true;
+
+	__WASP_DEBUG_PRINTF__("Notifying a conditional variable");
+	pthread_cond_broadcast(&self->__conditional_variable);
 
 	__WASP_DEBUG_PRINTF__("Freeing a lock");
 	pthread_mutex_unlock(&self->__mutex);
