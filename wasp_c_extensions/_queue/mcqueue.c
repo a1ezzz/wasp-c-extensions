@@ -68,7 +68,7 @@ static PyMethodDef WMultipleConsumersQueue_Type_methods[] = {
 PyTypeObject WMultipleConsumersQueue_Type = {
 	PyVarObject_HEAD_INIT(NULL, 0)
 	.tp_name = __STR_PACKAGE_NAME__"."__STR_QUEUE_MODULE_NAME__"."__STR_MCQUEUE_NAME__,
-	.tp_doc = "", // "Counter with atomic increase operation", TODO: update!
+	.tp_doc = "This is a simple queue that allows multiple consumers get their own copy of incoming data",
 	.tp_basicsize = sizeof(WMultipleConsumersQueue_Type),
 	.tp_itemsize = 0,
 	.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
