@@ -43,7 +43,7 @@ static PyMethodDef WMultipleConsumersQueue_Type_methods[] = {
 		"" // TODO: update docs!
 	},
 	{
-		"unsubscribe", (PyCFunction) WMultipleConsumersQueue_Object_unsubscribe, METH_NOARGS,
+		"unsubscribe", (PyCFunction) WMultipleConsumersQueue_Object_unsubscribe, METH_VARARGS,
 		"" // TODO: update docs!
 	},
 	{
@@ -180,9 +180,7 @@ static void WMultipleConsumersQueue_Type_dealloc(WMultipleConsumersQueue_Object*
 static PyObject* WMultipleConsumersQueue_Object_subscribe(WMultipleConsumersQueue_Object* self, PyObject* args){
 	__WASP_DEBUG_FN_CALL__;
 
-	PyObject* subscribers = NULL;
 	PyObject* next_message = NULL;
-	PyObject* queue_size = WMultipleConsumersQueue_Object_count(self, NULL);
 
 	next_message = __c_integer_operator(
 		self->__index_delta, "__radd__", PyList_Size((PyObject *) self->__queue),
@@ -197,8 +195,6 @@ static PyObject* WMultipleConsumersQueue_Object_subscribe(WMultipleConsumersQueu
 		Py_DECREF(next_message);
 	}
 
-	// TODO: return sum of queue_size and self.__subscribers
-
 	return NULL;
 }
 
@@ -208,10 +204,23 @@ static PyObject* WMultipleConsumersQueue_Object_unsubscribe(WMultipleConsumersQu
 	PyObject* msg = NULL;
 	PyObject* sub_counter = NULL;
 	PyObject* packed_msg = NULL;
-	Py_ssize_t drop_till = 0;
+	PyObject* py_msg_index = NULL;
 	int is_true = 0;
-	Py_ssize_t queue_length = PyList_Size((PyObject *) self->__queue);
+	Py_ssize_t c_msg_index = 0;
 	Py_ssize_t i = 0;
+	Py_ssize_t drop_till = 0;
+	Py_ssize_t queue_length = PyList_Size((PyObject *) self->__queue);
+
+	py_msg_index = WMultipleConsumersQueue_Object_msg_index(self, args);
+	if (py_msg_index == NULL){
+		return NULL;
+	}
+
+	c_msg_index = PyLong_AsSsize_t(py_msg_index);
+	Py_DECREF(py_msg_index);
+	if (PyErr_Occurred() != NULL) {
+		return NULL;
+	}
 
 	if (__reassign_with_c_integer_operator(
 		&self->__subscribers, "__sub__", 1, "Unable to decrease number of subscribers"
@@ -219,7 +228,7 @@ static PyObject* WMultipleConsumersQueue_Object_unsubscribe(WMultipleConsumersQu
 		return NULL;
 	}
 
-	for (i = 0; i < queue_length; i++) {
+	for (i = c_msg_index; i < queue_length; i++) {
 		packed_msg = PyList_GetItem((PyObject*) self->__queue, i);  // NOTE: borrowed ref
 		if (packed_msg == NULL){
 			PyErr_SetString(PyExc_RuntimeError, "Unable to get an item");
@@ -269,7 +278,7 @@ static PyObject* WMultipleConsumersQueue_Object_unsubscribe(WMultipleConsumersQu
 		Py_RETURN_NONE;
 	}
 
-	return WMultipleConsumersQueue_Object_clean(self, 0, drop_till);
+	return WMultipleConsumersQueue_Object_clean(self, c_msg_index, c_msg_index + drop_till);
 }
 
 static PyObject* WMultipleConsumersQueue_Object_clean(
@@ -364,12 +373,10 @@ static PyObject* WMultipleConsumersQueue_Object_push(WMultipleConsumersQueue_Obj
 static PyObject* WMultipleConsumersQueue_Object_pop(WMultipleConsumersQueue_Object* self, PyObject* args) {
 	__WASP_DEBUG_FN_CALL__;
 
-	PyObject* py_has_index = NULL;
 	PyObject* packed_msg = NULL;
 	PyObject* msg = NULL;
 	PyObject* sub_counter = NULL;
 	PyObject* py_msg_index = NULL;
-	PyObject* truncated_queue = NULL;
 	int is_true = 0;
 	Py_ssize_t c_msg_index = -1;
 
@@ -386,7 +393,7 @@ static PyObject* WMultipleConsumersQueue_Object_pop(WMultipleConsumersQueue_Obje
 	}
 	if (is_true == 0) {
 		Py_DECREF(py_msg_index);
-		PyErr_SetString(PyExc_ValueError, "No such element found");
+		PyErr_SetString(PyExc_KeyError, "No such element found");
 		return NULL;
 	}
 

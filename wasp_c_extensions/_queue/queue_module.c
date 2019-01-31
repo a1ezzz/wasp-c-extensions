@@ -43,9 +43,10 @@ PyMODINIT_FUNC __PYINIT_QUEUE_MAIN_FN__ (void) {
 		"Module \""__STR_PACKAGE_NAME__"."__STR_QUEUE_MODULE_NAME__"\" initialization call"
 	);
 
-	PyObject *m;
+	PyObject *m = NULL;
 
 	if (PyType_Ready(&WMultipleConsumersQueue_Type) < 0){
+		__WASP_DEBUG_PRINTF__("Unable to prepare \""__STR_MCQUEUE_NAME__"\"");
 		return NULL;
 	}
 	__WASP_DEBUG_PRINTF__("Type \""__STR_MCQUEUE_NAME__"\" was initialized");

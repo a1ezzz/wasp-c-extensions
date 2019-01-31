@@ -78,7 +78,7 @@
 			"define_macros": [
 				["__PACKAGE_NAME__", "wasp_c_extensions"],
 				["__QUEUE_MODULE_NAME__", "queue"],
-				["__MCQUEUE_NAME__", "WMultipleConsumersQueue"]
+				["__MCQUEUE_NAME__", "WMCQueue"]
 			]
 		}
 	]
