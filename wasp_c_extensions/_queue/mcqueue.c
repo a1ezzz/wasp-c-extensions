@@ -197,6 +197,8 @@ static PyObject* WMultipleConsumersQueue_Object_subscribe(WMultipleConsumersQueu
 		Py_DECREF(next_message);
 	}
 
+	// TODO: return sum of queue_size and self.__subscribers
+
 	return NULL;
 }
 
@@ -209,6 +211,7 @@ static PyObject* WMultipleConsumersQueue_Object_unsubscribe(WMultipleConsumersQu
 	Py_ssize_t drop_till = 0;
 	int is_true = 0;
 	Py_ssize_t queue_length = PyList_Size((PyObject *) self->__queue);
+	Py_ssize_t i = 0;
 
 	if (__reassign_with_c_integer_operator(
 		&self->__subscribers, "__sub__", 1, "Unable to decrease number of subscribers"
@@ -216,7 +219,7 @@ static PyObject* WMultipleConsumersQueue_Object_unsubscribe(WMultipleConsumersQu
 		return NULL;
 	}
 
-	for (Py_ssize_t i=0; i < queue_length; i++) {
+	for (i = 0; i < queue_length; i++) {
 		packed_msg = PyList_GetItem((PyObject*) self->__queue, i);  // NOTE: borrowed ref
 		if (packed_msg == NULL){
 			PyErr_SetString(PyExc_RuntimeError, "Unable to get an item");
@@ -276,8 +279,9 @@ static PyObject* WMultipleConsumersQueue_Object_clean(
 	PyObject* msg = NULL;
 	PyObject* sub_counter = NULL;
 	PyObject* packed_msg = NULL;
+	Py_ssize_t i = 0;
 
-	for (Py_ssize_t i=0; i < el_count; i++) {
+	for (i = 0; i < el_count; i++) {
 
 		packed_msg = PyList_GetItem((PyObject*) self->__queue, from_el);  // NOTE: borrowed ref
 		if (packed_msg == NULL){
