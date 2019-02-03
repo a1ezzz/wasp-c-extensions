@@ -22,6 +22,7 @@
 
 #include "_common/common.h"
 #include "mcqueue.h"
+#include "subscriber.h"
 
 static struct PyModuleDef queue_module = {
 	PyModuleDef_HEAD_INIT,
@@ -43,13 +44,19 @@ PyMODINIT_FUNC __PYINIT_QUEUE_MAIN_FN__ (void) {
 		"Module \""__STR_PACKAGE_NAME__"."__STR_QUEUE_MODULE_NAME__"\" initialization call"
 	);
 
-	PyObject *m = NULL;
+	PyObject* m = NULL;
 
 	if (PyType_Ready(&WMultipleConsumersQueue_Type) < 0){
 		__WASP_DEBUG_PRINTF__("Unable to prepare \""__STR_MCQUEUE_NAME__"\"");
 		return NULL;
 	}
 	__WASP_DEBUG_PRINTF__("Type \""__STR_MCQUEUE_NAME__"\" was initialized");
+
+	if (PyType_Ready(&WMCQueueSubscriber_Type) < 0){
+		__WASP_DEBUG_PRINTF__("Unable to prepare \""__STR_MCQUEUE_SUBSCRIBER_NAME__"\"");
+		return NULL;
+	}
+	__WASP_DEBUG_PRINTF__("Type \""__STR_MCQUEUE_SUBSCRIBER_NAME__"\" was initialized");
 
 	m = PyModule_Create(&queue_module);
 	if (m == NULL)
@@ -58,7 +65,9 @@ PyMODINIT_FUNC __PYINIT_QUEUE_MAIN_FN__ (void) {
 	__WASP_DEBUG_PRINTF__("Module \""__STR_PACKAGE_NAME__"."__STR_QUEUE_MODULE_NAME__"\" was created");
 
 	Py_INCREF(&WMultipleConsumersQueue_Type);
+	Py_INCREF(&WMCQueueSubscriber_Type);
 	PyModule_AddObject(m, __STR_MCQUEUE_NAME__, (PyObject*) &WMultipleConsumersQueue_Type);
+	PyModule_AddObject(m, __STR_MCQUEUE_SUBSCRIBER_NAME__, (PyObject*) &WMCQueueSubscriber_Type);
         __WASP_DEBUG_PRINTF__("Type \""__STR_QUEUE_MODULE_NAME__"\" was linked");
 
 	return m;

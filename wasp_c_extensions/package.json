@@ -65,11 +65,14 @@
 			"module_name": "wasp_c_extensions.queue",
 			"sources": [
 				"wasp_c_extensions/_queue/queue_module.c",
-				"wasp_c_extensions/_queue/mcqueue.c"
+				"wasp_c_extensions/_queue/mcqueue.c",
+				"wasp_c_extensions/_queue/subscriber.c"
 			],
 			"depends": [
 				"wasp_c_extensions/_queue/mcqueue.h",
+				"wasp_c_extensions/_queue/subscriber.h",
 				"wasp_c_extensions/_common/common.h",
+				"wasp_c_extensions/_common/static_functions.h",
 				"wasp_c_extensions/package.json"
 			],
 			"include_dirs": [
@@ -78,7 +81,8 @@
 			"define_macros": [
 				["__PACKAGE_NAME__", "wasp_c_extensions"],
 				["__QUEUE_MODULE_NAME__", "queue"],
-				["__MCQUEUE_NAME__", "WMCQueue"]
+				["__MCQUEUE_NAME__", "WMCQueue"],
+				["__MCQUEUE_SUBSCRIBER_NAME__", "WMCQueueSubscriber"]
 			]
 		}
 	]

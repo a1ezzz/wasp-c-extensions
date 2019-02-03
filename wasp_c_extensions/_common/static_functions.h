@@ -21,7 +21,7 @@
 #ifndef __WASP_C_EXTENSIONS__COMMON_STATIC_FUNCTIONS_H__
 #define __WASP_C_EXTENSIONS__COMMON_STATIC_FUNCTIONS_H__
 
-static PyObject* __c_integer_operator(
+static inline PyObject* __c_integer_operator(
 	PyLongObject* py_long_value, const char* method, long method_argument, const char* err_msg
 ) {
 	PyObject* result = PyObject_CallMethod((PyObject *) py_long_value, method, "(i)", method_argument);
@@ -34,7 +34,7 @@ static PyObject* __c_integer_operator(
 	return result;
 }
 
-static PyObject* __py_integer_operator(
+static inline PyObject* __py_integer_operator(
 	PyLongObject* py_long_value, const char* method, PyObject* method_argument, const char* err_msg
 ) {
 	PyObject* result = PyObject_CallMethod((PyObject *) py_long_value, method, "(O)", method_argument);
@@ -47,7 +47,7 @@ static PyObject* __py_integer_operator(
 	return result;
 }
 
-static int __reassign_with_c_integer_operator(
+static inline int __reassign_with_c_integer_operator(
 	PyLongObject** py_long_value, const char* method, long method_argument, const char* err_msg
 ) {
 	PyObject* next_value = PyObject_CallMethod((PyObject *) *py_long_value, method, "(i)", method_argument);
@@ -63,7 +63,7 @@ static int __reassign_with_c_integer_operator(
 	return 0;
 }
 
-static int __comparision_c_integer_operator(
+static inline int __comparision_c_integer_operator(
 	PyLongObject* py_long_value, const char* method, long method_argument, const char* call_err_msg,
 	const char* is_true_err_msg
 ) {
