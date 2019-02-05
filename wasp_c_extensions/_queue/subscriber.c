@@ -110,23 +110,16 @@ static int WMCQueueSubscriber_Object_init(WMCQueueSubscriber_Object *self, PyObj
 		return -1;
 	}
 
+	Py_INCREF(queue);
+
 	msg_index = PyObject_CallMethod((PyObject *) queue, "subscribe", NULL);
 	if (msg_index == NULL){
 		if (PyErr_Occurred() == NULL) {
 			PyErr_SetString(PyExc_RuntimeError, "Unable to subscribe to the queue!");
 		}
+		Py_DECREF(queue);
 		return -1;
 	}
-
-	if (self->__queue != NULL) {
-		Py_DECREF(self->__queue);
-	}
-
-	if (self->__msg_index != NULL) {
-		Py_DECREF(self->__msg_index);
-	}
-
-	Py_INCREF(queue);
 
 	self->__queue = queue;
 	self->__msg_index = (PyLongObject*) msg_index;
@@ -176,7 +169,7 @@ static PyObject* WMCQueueSubscriber_Object_has_next(WMCQueueSubscriber_Object* s
 static PyObject* WMCQueueSubscriber_Object_unsubscribe(WMCQueueSubscriber_Object* self, PyObject* args) {
 	__WASP_DEBUG_FN_CALL__;
 
-	PyObject* result;
+	PyObject* result = NULL;
 
 	if (self->__queue == NULL || self->__msg_index == NULL){
 		PyErr_SetString(PyExc_RuntimeError, "Unable to get next message because subscriber was unsubscribe!");

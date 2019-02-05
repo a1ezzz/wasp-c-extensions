@@ -132,7 +132,7 @@ static int WMultipleConsumersQueue_Object_init(WMultipleConsumersQueue_Object *s
 	}
 
 	if (callback != NULL){
-		Py_INCREF(callback);  // NOTE: 'O'-object must increase theirs counter manually
+		Py_INCREF(callback);  // NOTE: 'O'-object refs counters must be increased
 		if (PyCallable_Check(callback) != 1){
 			PyErr_SetString(PyExc_ValueError, "A callback variable must be 'callable' object");
 			Py_DECREF(callback);
@@ -156,6 +156,7 @@ static void WMultipleConsumersQueue_Type_dealloc(WMultipleConsumersQueue_Object*
         }
 
 	if (self->__queue != NULL){
+		__WASP_DEBUG_PRINTF__("Cleaning queue (current size %i)", PyList_Size((PyObject *) self->__queue));
 		WMultipleConsumersQueue_Object_clean(self, 0, PyList_Size((PyObject *) self->__queue));
 		Py_DECREF(self->__queue);
 	}
@@ -183,7 +184,7 @@ static PyObject* WMultipleConsumersQueue_Object_subscribe(WMultipleConsumersQueu
 	PyObject* next_message = NULL;
 
 	next_message = __c_integer_operator(
-		self->__index_delta, "__radd__", PyList_Size((PyObject *) self->__queue),
+		self->__index_delta, "__add__", PyList_Size((PyObject *) self->__queue),
 		"Unable to find next message index"
 	);
 	if (next_message != NULL){
@@ -259,7 +260,8 @@ static PyObject* WMultipleConsumersQueue_Object_unsubscribe(WMultipleConsumersQu
 		}
 
 		if (__reassign_with_c_integer_operator(
-			(PyLongObject**) &sub_counter, "__sub__", 1, "Unable to decrease number of subscribers to a message"
+			(PyLongObject**) &sub_counter, "__sub__", 1,
+			"Unable to decrease number of subscribers to a message"
 		) != 0){
 			return NULL;
 		}
@@ -291,19 +293,6 @@ static PyObject* WMultipleConsumersQueue_Object_clean(
 	Py_ssize_t i = 0;
 
 	for (i = 0; i < el_count; i++) {
-
-		packed_msg = PyList_GetItem((PyObject*) self->__queue, from_el);  // NOTE: borrowed ref
-		if (packed_msg == NULL){
-			PyErr_SetString(PyExc_RuntimeError, "Unable to get an item for cleaning");
-			return NULL;
-		}
-
-		msg = PyTuple_GetItem(packed_msg, 0);  // NOTE: borrowed reference
-		sub_counter = PyTuple_GetItem(packed_msg, 1);  // NOTE: borrowed reference
-
-		Py_DECREF(packed_msg);
-		Py_DECREF(sub_counter);
-		Py_DECREF(msg);
 
 		if (PySequence_DelItem((PyObject*) self->__queue, from_el) == -1){
 			PyErr_SetString(PyExc_RuntimeError, "Unable to remove outdated item");
@@ -345,14 +334,10 @@ static PyObject* WMultipleConsumersQueue_Object_push(WMultipleConsumersQueue_Obj
 		return NULL;
 	}
 
-	Py_INCREF(self->__subscribers);  // NOTE: new item in a tuple
-	Py_INCREF(msg);  // NOTE: new item in a tuple
 	packed_msg = PyTuple_Pack(2, msg, self->__subscribers);
 
 	if (PyList_Append((PyObject*) self->__queue, packed_msg) != 0){
-		Py_DECREF(packed_msg);  // NOTE: clear tuple
-		Py_DECREF(msg);  // NOTE: clear item from tuple
-		Py_DECREF(self->__subscribers);  // NOTE: clear item from tuple
+		Py_DECREF(packed_msg);
 		return NULL;
 	}
 
@@ -361,7 +346,9 @@ static PyObject* WMultipleConsumersQueue_Object_push(WMultipleConsumersQueue_Obj
 		callback_result = PyObject_Call(self->__callback, callback_args, NULL);
 		Py_DECREF(callback_args);  // NOTE: does not needed
 		if (callback_result == NULL){
-			PyErr_SetString(PyExc_RuntimeError, "Callback error!");
+			if (PyErr_Occurred() == NULL) {
+				PyErr_SetString(PyExc_RuntimeError, "Callback error!");
+			}
 			return NULL;
 		}
 		Py_DECREF(callback_result);  // NOTE: there is not need a call result
@@ -413,10 +400,17 @@ static PyObject* WMultipleConsumersQueue_Object_pop(WMultipleConsumersQueue_Obje
 	msg = PyTuple_GetItem(packed_msg, 0);  // NOTE: borrowed reference
 	sub_counter = PyTuple_GetItem(packed_msg, 1);  // NOTE: borrowed reference
 
+	Py_INCREF(msg);
+	Py_INCREF(sub_counter);
+
 	Py_DECREF(packed_msg);
 
 	if (msg == NULL || sub_counter == NULL) {
 		PyErr_SetString(PyExc_RuntimeError, "Unable to unpack message");
+
+		Py_DECREF(msg);
+		Py_DECREF(sub_counter);
+
 		return NULL;
 	}
 
@@ -425,13 +419,20 @@ static PyObject* WMultipleConsumersQueue_Object_pop(WMultipleConsumersQueue_Obje
 	);
 
 	if (is_true == -1) {
+
+		Py_DECREF(msg);
+		Py_DECREF(sub_counter);
+
 		return NULL;
 	}
 	if (is_true == 1){
 
-		Py_INCREF(msg);
+		Py_DECREF(sub_counter);
 
 		if (WMultipleConsumersQueue_Object_clean(self, c_msg_index, 1) == NULL){
+
+			Py_DECREF(msg);
+
 			return NULL;
 		}
 
