@@ -1,5 +1,6 @@
 
 import pytest
+import gc
 from random import random
 from threading import Thread
 
@@ -174,6 +175,7 @@ class TestWMCQueueSubscriber:
 		assert(queue.has(4) is False)
 
 		s1 = None
+		gc.collect()
 		assert(queue.has(0) is False)
 		assert(queue.has(1) is False)
 		assert(queue.has(2) is False)
