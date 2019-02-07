@@ -32,15 +32,19 @@ static PyObject* WMCQueueSubscriber_Object_unsubscribe(WMCQueueSubscriber_Object
 static PyMethodDef WMCQueueSubscriber_Type_methods[] = {
 	{
 		"next", (PyCFunction) WMCQueueSubscriber_Object_next, METH_NOARGS,
-		"" // TODO: update docs!
+		"Return next message. If a message is not ready then KeyError exception will be raised.\n"
+		"\n"
+		":return: anything"
 	},
 	{
 		"has_next", (PyCFunction) WMCQueueSubscriber_Object_has_next, METH_NOARGS,
-		"" // TODO: update docs!
+		"Check if there is a new message available in a queue\n"
+		"\n"
+		":return: bool"
 	},
 	{
 		"unsubscribe", (PyCFunction) WMCQueueSubscriber_Object_unsubscribe, METH_NOARGS,
-		"" // TODO: update docs!
+		"Unsubscribe from a queue. No more messages will be available from a queue"
 	},
 	{NULL}
 };
@@ -48,7 +52,8 @@ static PyMethodDef WMCQueueSubscriber_Type_methods[] = {
 PyTypeObject WMCQueueSubscriber_Type = {
 	PyVarObject_HEAD_INIT(NULL, 0)
 	.tp_name = __STR_PACKAGE_NAME__"."__STR_QUEUE_MODULE_NAME__"."__STR_MCQUEUE_SUBSCRIBER_NAME__,
-	.tp_doc = "This is a simple thread-safe subscriber for \""__STR_MCQUEUE_NAME__"\" class",
+	.tp_doc = "This is a simple thread-safe subscriber for \""__STR_MCQUEUE_NAME__"\" class. It wraps subscription "
+	"and unsubscription procedures and wraps message index handling.",
 	.tp_basicsize = sizeof(WMCQueueSubscriber_Type),
 	.tp_itemsize = 0,
 	.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,

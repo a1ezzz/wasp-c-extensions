@@ -40,27 +40,50 @@ static PyObject* WMultipleConsumersQueue_Object_clean(
 static PyMethodDef WMultipleConsumersQueue_Type_methods[] = {
 	{
 		"subscribe", (PyCFunction) WMultipleConsumersQueue_Object_subscribe, METH_NOARGS,
-		"" // TODO: update docs!
+		"\"Subscribe\" to this queue and return index of the next message.\n"
+		"\n"
+		":return: int"
 	},
 	{
 		"unsubscribe", (PyCFunction) WMultipleConsumersQueue_Object_unsubscribe, METH_VARARGS,
-		"" // TODO: update docs!
+		"\"Unsubscribe\" from a queue. In order to unsubscribe subscriber must submit its message index. "
+		"All the messages from that index and further won't be available to this subscriber any more.\n"
+		"\n"
+		":param msg_index: id of subscriber message\n"
+		":return: None"
 	},
 	{
 		"push", (PyCFunction) WMultipleConsumersQueue_Object_push, METH_VARARGS,
-		"" // TODO: update docs!
+		"Send a new message to this queue\n"
+		"\n"
+		":param msg: message to send\n"
+		":return: None"
 	},
 	{
 		"pop", (PyCFunction) WMultipleConsumersQueue_Object_pop, METH_VARARGS,
-		"" // TODO: update docs!
+		"Get message from a queue by an index. Must be:\n"
+		" - called by a subscriber\n"
+		" - \"msg_index\" parameter must be subscribers index\n"
+		" - subscriber index must increase its index by one after message retrieving\n"
+		"Same subscriber must not request the same message twice!\n"
+		"\n"
+		":param msg_index: id of a message to return\n"
+		":return: message that was pushed"
 	},
 	{
 		"has", (PyCFunction) WMultipleConsumersQueue_Object_has, METH_VARARGS,
-		"" // TODO: update docs!
+		"Check if there is a message with index in a queue. Should be used by subscribers only for checking "
+		"new messages\n"
+		"\n"
+		":param msg_index: id of a message to check\n"
+		":return: bool"
 	},
 	{
 		"count", (PyCFunction) WMultipleConsumersQueue_Object_count, METH_NOARGS,
-		"" // TODO: update docs!
+		"Return number of messages that this queue has. This method should be used for a queue diagnostic "
+		"only. And it must not be used for determining existing message indexes.\n"
+		"\n"
+		":return: int"
 	},
 	{NULL}
 };
@@ -68,7 +91,21 @@ static PyMethodDef WMultipleConsumersQueue_Type_methods[] = {
 PyTypeObject WMultipleConsumersQueue_Type = {
 	PyVarObject_HEAD_INIT(NULL, 0)
 	.tp_name = __STR_PACKAGE_NAME__"."__STR_QUEUE_MODULE_NAME__"."__STR_MCQUEUE_NAME__,
-	.tp_doc = "This is a simple queue that allows multiple consumers get their own copy of incoming data",
+	.tp_doc = "This is a simple queue that allows multiple consumers get their own copy of incoming data.\n"
+	"There are not many checks in this implementation. Subscribers behaviour is not restricted but they should "
+	"play nice in order to make this queue consistent.\n"
+	"Anything may send any data (it calls a message) to this queue but in order to receive that data (message) "
+	"from a queue subscription must be made. If there are no subscribers then no messages will be saved for the "
+	"following receiving.\n"
+	"Lets assume that there is one subscriber at least. Then a new message may be pushed to a queue. That message "
+	"won't be erased until all current subscribers get that message (or until some part or all of the subscribers "
+	"unsubscribe from this queue)\n"
+	"In order to subscribe \""__STR_MCQUEUE_NAME__".subscribe\" method must be called. As a result it returns an "
+	"index of the next message (a message that does not exist at the moment of subscription but that will be "
+	"available on the next message pushing). That index must be saved by a subscriber and with that index "
+	"the next message may be retrieved. After retrieving of the message subscriber must increase his index by one. "
+	"If there are no need in new messages then subscriber must unsubscribe itself from a queue\n"
+	"As it was written before. A queue will be consistent if previous rules are followed",
 	.tp_basicsize = sizeof(WMultipleConsumersQueue_Type),
 	.tp_itemsize = 0,
 	.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
