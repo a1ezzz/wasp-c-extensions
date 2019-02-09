@@ -1,3 +1,8 @@
-include requirements.txt
+include AUTHORS
+include CHANGELOG
+include COPYING.LESSER
+include LICENSE
 include README.md
+include requirements.txt
+
 recursive-include wasp_c_extensions *

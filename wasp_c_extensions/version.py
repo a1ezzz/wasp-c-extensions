@@ -19,18 +19,4 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
-import json
-import subprocess
-
-
-with open(os.path.join(os.path.dirname(__file__), 'package.json'), 'r') as f:
-	__package_data__ = json.load(f)
-
-__author__ = __package_data__['author']
-__email__ = __package_data__['author_email']
-__credits__ = __package_data__['credits']
-__license__ = __package_data__['license']
-__copyright__ = __package_data__['copyright']
-__status__ = __package_data__['status']
-__version__ = __package_data__['version']
+__version__ = "0.0.2.2-dev"
