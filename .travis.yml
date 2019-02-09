@@ -4,13 +4,7 @@ language: python
 matrix:
   include:
 
-# travis does not support Python 3.1 anymore
-
-    - dist: trusty
-      python: "3.2"
-
-    - dist: trusty
-      python: "3.3"
+# Python 3.3 can not be used with setuptools >= 36.0.0
 
     - python: "3.4"
 
