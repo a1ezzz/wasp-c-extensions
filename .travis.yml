@@ -24,11 +24,7 @@ matrix:
     - python: "pypy3.5"
 
 install:
-  - pip install -r dev-requirements.txt
-  - pip install -r requirements.txt
   - pip install -v .
 
 script:
-  - cd tests
-  - py.test
-
+  - python ./setup.py test
