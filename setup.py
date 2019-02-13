@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
 			extension_kw = {}
 
-			for option in ["include_dirs", "libraries", "extra_compile_args"]:
+			for option in ["include_dirs", "libraries", "extra_compile_args", "depends"]:
 				if option in section:
 					extension_kw[option] = section[option].split()
 
