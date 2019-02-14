@@ -194,7 +194,7 @@ static PyObject* WMCQueueSubscriber_Object_unsubscribe(WMCQueueSubscriber_Object
 	PyObject* result = NULL;
 
 	if (self->__queue == NULL || self->__msg_index == NULL){
-		PyErr_SetString(PyExc_RuntimeError, "Unable to get next message because subscriber was unsubscribe!");
+		PyErr_SetString(PyExc_RuntimeError, "Unable to unsubscribe subscriber because it unsubscribed before!");
 		return NULL;
 	}
 
