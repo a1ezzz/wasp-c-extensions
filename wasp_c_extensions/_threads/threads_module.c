@@ -23,6 +23,33 @@
 #include "_common/common.h"
 #include "atomic.h"
 #include "event.h"
+#include "module_functions.h"
+
+static PyMethodDef threads_methods[] = {
+
+	{
+		"awareness_wait", (PyCFunction) awareness_wait, METH_VARARGS | METH_KEYWORDS,
+		"Wait for the specified event to come. But before \"wait\" method will be called. An \"sync_fn\" "
+		"callback will be executed and if the result is True, then the event's \"set\" method is called "
+		"and then this function returns True, otherwise \"clear\" method is called and the event will "
+		"be awaited\n"
+		"\n"
+		":param event: an event to synchronize with and to wait for\n"
+		":type event: Event | "__STR_PTHREAD_EVENT_NAME__"\n"
+		"\n"
+		":param sync_fn: a callable object that must return 'bool' object. This object may help to "
+		"synchronize the event with an external environment\n"
+		":type sync_fn: callable\n"
+		"\n"
+		":param timeout: if defined then this is a time in seconds during which an event will be awaited "
+		"(default is no timeout)\n"
+		":type timeout: int | float | None\n"
+		"\n"
+		":rtype: bool\n"
+	},
+
+	{NULL, NULL, 0, NULL}
+};
 
 static struct PyModuleDef threads_module = {
 	PyModuleDef_HEAD_INIT,
@@ -32,9 +59,11 @@ static struct PyModuleDef threads_module = {
 		__STR_ATOMIC_COUNTER_NAME__" class that may be used as a counter which modification via "
 		__STR_ATOMIC_COUNTER_NAME__".increase method which call is atomic (is thread safe)\n"
 		__STR_PTHREAD_EVENT_NAME__" class that behave the same way as threading.Event does, but runs faster "
-		"because of implementation with phtread library."
+		"because of implementation with phtread library.\n"
+		"\"awareness_wait\" function that may synchronize event with some external state"
 	,
 	.m_size = -1,
+	threads_methods
 };
 
 PyMODINIT_FUNC __PYINIT_THREADS_MAIN_FN__ (void) {

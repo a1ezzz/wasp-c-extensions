@@ -26,7 +26,6 @@ static int WPThreadEvent_Object_init(WPThreadEvent_Object *self, PyObject *args,
 
 static PyObject* WPThreadEvent_Object___wait(WPThreadEvent_Object* self, PyObject* timeout);
 static PyObject* WPThreadEvent_Object_wait(WPThreadEvent_Object* self, PyObject *args, PyObject *kwargs);
-static PyObject* WPThreadEvent_Object_awareness_wait(WPThreadEvent_Object* self, PyObject* args, PyObject* kwargs);
 static PyObject* WPThreadEvent_Object_clear(WPThreadEvent_Object* self, PyObject *args);
 static PyObject* WPThreadEvent_Object_set(WPThreadEvent_Object* self, PyObject *args);
 static PyObject* WPThreadEvent_Object_is_set(WPThreadEvent_Object* self, PyObject *args);
@@ -42,19 +41,6 @@ static PyMethodDef WPThreadEvent_Type_methods[] = {
 		"Wait for a event to come. If the event flag was set and is not cleared then this function returns\n"
 		"immediately. Returns True if event occurred and False otherwise\n"
 		"\n"
-		":param timeout: time in seconds during which an event will be awaited (default is no timeout)\n"
-		":return: bool"
-	},
-
-	{
-		"awareness_wait", (PyCFunction) WPThreadEvent_Object_awareness_wait, METH_VARARGS | METH_KEYWORDS,
-		"Same as \""__STR_PTHREAD_EVENT_NAME__".wait\" method but before ordinary waiting the following check "
-		"will be applied. An \"awareness_fn\" object will be called and the result is True, then the internal "
-		"flag is set and this method returns True, otherwise the internal flag is cleared and an event will "
-		"be awaited\n"
-		"\n"
-		":param awareness_fn: a callable object that must return 'bool' object. This object may help to "
-		"synchronize an internal flag with a external environment\n"
 		":param timeout: time in seconds during which an event will be awaited (default is no timeout)\n"
 		":return: bool"
 	},
@@ -185,55 +171,6 @@ static int WPThreadEvent_Object_init(WPThreadEvent_Object *self, PyObject *args,
 	__WASP_DEBUG_PRINTF__("Object \""__STR_PTHREAD_EVENT_NAME__"\" was initialized");
 
 	return 0;
-}
-
-static PyObject* WPThreadEvent_Object_awareness_wait(WPThreadEvent_Object* self, PyObject *args, PyObject *kwargs) {
-	__WASP_DEBUG_FN_CALL__;
-
-	PyObject* awareness_fn = NULL;
-	PyObject* awareness_fn_args = NULL;
-	PyObject* awareness_fn_result = NULL;
-	PyObject* timeout = NULL;
-	static char *kwlist[] = {"awareness_fn", "timeout", NULL};
-	int is_true = 0;
-
-	if (! PyArg_ParseTupleAndKeywords(args, kwargs, "O|O", kwlist, &awareness_fn, &timeout)){
-		return NULL;
-	}
-
-	Py_INCREF(awareness_fn);
-	if (PyCallable_Check(awareness_fn) != 1){
-		PyErr_SetString(PyExc_ValueError, "A 'awareness_fn' variable must be 'callable' object");
-		Py_DECREF(awareness_fn);
-		return NULL;
-	}
-
-	awareness_fn_args = PyTuple_Pack(0);
-	awareness_fn_result = PyObject_Call(awareness_fn, awareness_fn_args, NULL);
-	Py_DECREF(awareness_fn);
-	Py_DECREF(awareness_fn_args);
-
-	if (awareness_fn_result == NULL) {
-		PyErr_SetString(PyExc_RuntimeError, "A 'awareness_fn' call error!");
-		return NULL;
-	}
-
-	is_true = PyObject_IsTrue(awareness_fn_result);
-	Py_DECREF(awareness_fn_result);
-
-	if (is_true == -1) {
-		PyErr_SetString(PyExc_RuntimeError, "A 'awareness_fn' comparision error!");
-		return NULL;
-	}
-
-	if (is_true == 1) {
-		self->__is_set = true;
-		Py_RETURN_TRUE;
-	}
-
-	self->__is_set = false;
-
-	return WPThreadEvent_Object___wait(self, timeout);
 }
 
 static PyObject* WPThreadEvent_Object_wait(WPThreadEvent_Object* self, PyObject *args, PyObject *kwargs) {

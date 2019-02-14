@@ -323,10 +323,6 @@ static PyObject* WMultipleConsumersQueue_Object_unsubscribe(WMultipleConsumersQu
 static PyObject* WMultipleConsumersQueue_Object_clean(
 	WMultipleConsumersQueue_Object* self, Py_ssize_t from_el, Py_ssize_t el_count
 ) {
-
-	PyObject* msg = NULL;
-	PyObject* sub_counter = NULL;
-	PyObject* packed_msg = NULL;
 	Py_ssize_t i = 0;
 
 	for (i = 0; i < el_count; i++) {
