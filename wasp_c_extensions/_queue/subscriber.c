@@ -25,6 +25,7 @@ static PyObject* WMCQueueSubscriber_Type_new(PyTypeObject* type, PyObject* args,
 static void WMCQueueSubscriber_Type_dealloc(WMCQueueSubscriber_Object* self);
 static int WMCQueueSubscriber_Object_init(WMCQueueSubscriber_Object *self, PyObject *args, PyObject *kwargs);
 
+static PyObject* WMCQueueSubscriber_Object_subscribed(WMCQueueSubscriber_Object* self, PyObject* args);
 static PyObject* WMCQueueSubscriber_Object_next(WMCQueueSubscriber_Object* self, PyObject* args);
 static PyObject* WMCQueueSubscriber_Object_has_next(WMCQueueSubscriber_Object* self, PyObject* args);
 static PyObject* WMCQueueSubscriber_Object_unsubscribe(WMCQueueSubscriber_Object* self, PyObject* args);
@@ -32,19 +33,27 @@ static PyObject* WMCQueueSubscriber_Object_unsubscribe(WMCQueueSubscriber_Object
 static PyMethodDef WMCQueueSubscriber_Type_methods[] = {
 	{
 		"next", (PyCFunction) WMCQueueSubscriber_Object_next, METH_NOARGS,
-		"Return next message. If a message is not ready then KeyError exception will be raised.\n"
+		"Return next message. If a message is not ready then KeyError exception will be raised\n"
 		"\n"
-		":return: anything"
+		":rtype: anything\n"
+	},
+	{
+		"subscribed", (PyCFunction) WMCQueueSubscriber_Object_subscribed, METH_NOARGS,
+		"Return True if this subscriber is actual and was not unsubscribed\n"
+		"\n"
+		":rtype: bool\n"
 	},
 	{
 		"has_next", (PyCFunction) WMCQueueSubscriber_Object_has_next, METH_NOARGS,
 		"Check if there is a new message available in a queue\n"
 		"\n"
-		":return: bool"
+		":rtype: bool\n"
 	},
 	{
 		"unsubscribe", (PyCFunction) WMCQueueSubscriber_Object_unsubscribe, METH_NOARGS,
-		"Unsubscribe from a queue. No more messages will be available from a queue"
+		"Unsubscribe from a queue. No more messages will be available from a queue\n"
+		"\n"
+		":rtype: None\n"
 	},
 	{NULL}
 };
@@ -131,6 +140,14 @@ static int WMCQueueSubscriber_Object_init(WMCQueueSubscriber_Object *self, PyObj
 
 	__WASP_DEBUG_PRINTF__("Object \""__STR_MCQUEUE_SUBSCRIBER_NAME__"\" was initialized");
 	return 0;
+}
+
+static PyObject* WMCQueueSubscriber_Object_subscribed(WMCQueueSubscriber_Object* self, PyObject* args) {
+	if (self->__queue != NULL && self->__msg_index != NULL){
+		Py_RETURN_TRUE;
+	}
+
+	Py_RETURN_FALSE;
 }
 
 static PyObject* WMCQueueSubscriber_Object_next(WMCQueueSubscriber_Object* self, PyObject* args) {
