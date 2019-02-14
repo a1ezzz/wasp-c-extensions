@@ -120,6 +120,7 @@ class TestWMCQueueSubscriber:
 	def test(self):
 		queue = WMCQueue()
 		s1 = WMCQueueSubscriber(queue)
+		assert(s1.subscribed() is True)
 
 		assert(s1.has_next() is False)
 		pytest.raises(KeyError, s1.next)
@@ -154,6 +155,7 @@ class TestWMCQueueSubscriber:
 		assert(s1.has_next() is True)
 
 		s1.unsubscribe()
+		assert(s1.subscribed() is False)
 		assert(queue.has(0) is False)
 		assert(queue.has(1) is False)
 		assert(queue.has(2) is False)
