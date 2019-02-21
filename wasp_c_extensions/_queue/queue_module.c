@@ -27,14 +27,12 @@
 static struct PyModuleDef queue_module = {
 	PyModuleDef_HEAD_INIT,
 	.m_name = __STR_PACKAGE_NAME__"."__STR_QUEUE_MODULE_NAME__,
-	.m_doc = "",
-//	.m_doc =
-//		"This module "__STR_PACKAGE_NAME__"."__STR_THREADS_MODULE_NAME__" contains following classes:\n"
-//		__STR_ATOMIC_COUNTER_NAME__" class that may be used as a counter which modification via "
-//		__STR_ATOMIC_COUNTER_NAME__".increase method which call is atomic (is thread safe)\n"
-//		__STR_PTHREAD_EVENT_NAME__" class that behave the same way as threading.Event does, but runs faster "
-//		"because of implementation with phtread library."
-//	,
+	.m_doc =
+		"This module "__STR_PACKAGE_NAME__"."__STR_QUEUE_MODULE_NAME__" contains following classes:\n"
+		__STR_MCQUEUE_NAME__" class that implements simple queue with multiple consumers\n"
+		__STR_MCQUEUE_SUBSCRIBER_NAME__" helper for "__STR_MCQUEUE_NAME__" class that simplify working with "
+		"that queue"
+	,
 	.m_size = -1,
 };
 

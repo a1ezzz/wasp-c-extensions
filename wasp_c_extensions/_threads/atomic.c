@@ -91,7 +91,7 @@ static int WAtomicCounter_Object_init(WAtomicCounter_Object *self, PyObject *arg
 		return -1;
 	}
 
-	if (value) {
+	if (value != NULL) {
 		Py_DECREF(self->__int_value);  // NOTE: we no longer need old value
 		self->__int_value = (PyLongObject*) value;
 		Py_INCREF(self->__int_value);  // NOTE: values that were parsed as "O" do not increment ref. counter

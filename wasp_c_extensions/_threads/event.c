@@ -147,7 +147,7 @@ static int WPThreadEvent_Object_init(WPThreadEvent_Object *self, PyObject *args,
 		return 0;
 	}
 
-	if (py_error_timeout != NULL) {
+	if (py_error_timeout != NULL && py_error_timeout != Py_None) {
 
 		Py_INCREF(py_error_timeout);  // NOTE: this ref was not increased by "O"-casting, but it must be
 		// since this is a python function argument
@@ -204,7 +204,7 @@ static PyObject* WPThreadEvent_Object___wait(WPThreadEvent_Object* self, PyObjec
 		Py_RETURN_TRUE;
 	}
 
-	if (py_timeout != NULL) {
+	if (py_timeout != NULL && py_timeout != Py_None) {
 
 		__WASP_DEBUG_PRINTF__("A timeout was specified");
 
