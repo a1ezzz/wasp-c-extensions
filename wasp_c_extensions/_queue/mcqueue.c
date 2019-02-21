@@ -168,7 +168,7 @@ static int WMultipleConsumersQueue_Object_init(WMultipleConsumersQueue_Object *s
 		return -1;
 	}
 
-	if (callback != NULL){
+	if (callback != NULL && callback != Py_None){
 		Py_INCREF(callback);  // NOTE: 'O'-object refs counters must be increased
 		if (PyCallable_Check(callback) != 1){
 			PyErr_SetString(PyExc_ValueError, "A callback variable must be 'callable' object");

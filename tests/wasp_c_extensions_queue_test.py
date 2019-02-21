@@ -184,6 +184,20 @@ class TestWMCQueueSubscriber:
 		assert(queue.has(3) is False)
 		assert(queue.has(4) is False)
 
+		queue = WMCQueue(callback=None)
+		s1 = WMCQueueSubscriber(queue)
+		assert(s1.subscribed() is True)
+
+		assert(s1.has_next() is False)
+		pytest.raises(KeyError, s1.next)
+		assert(queue.has(0) is False)
+		assert(queue.has(1) is False)
+
+		queue.push(1)
+		assert(s1.has_next() is True)
+		assert(queue.has(0) is True)
+		assert(queue.has(1) is False)
+
 
 class TestConcurrency:
 

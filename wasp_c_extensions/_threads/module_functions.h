@@ -70,7 +70,7 @@ static PyObject* awareness_wait(PyObject *self, PyObject *args, PyObject *kwargs
 
 	PyObject_CallMethod(event, "clear", NULL);
 
-	if (timeout != NULL) {
+	if (timeout != NULL && timeout != Py_None) {
 		Py_INCREF(timeout);
 		fn_result = PyObject_CallMethod(event, "wait", "O", timeout);
 		Py_DECREF(timeout);

@@ -15,6 +15,9 @@ class TestWAtomicCounter:
 		c = WAtomicCounter()
 		assert(c.__int__() == 0)
 
+		c = WAtomicCounter()
+		assert(c.__int__() == 0)
+
 		c.increase_counter(1)
 		assert(c.__int__() == 1)
 
@@ -66,7 +69,16 @@ class TestWPThreadEvent:
 		event.set()
 		assert(event.is_set() is True)
 
+		event = WPThreadEvent(None)
+		assert(event.is_set() is False)
+		event.clear()
+		assert(event.is_set() is False)
+
+		event.set()
+		assert(event.is_set() is True)
+
 		assert(event.wait() is True)
+		assert(event.wait(None) is True)
 
 		event.set()
 		assert(event.is_set() is True)
