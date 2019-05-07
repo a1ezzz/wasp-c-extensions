@@ -26,7 +26,7 @@
 
 #include "_common/common.h"
 
-PyTypeObject WMultipleConsumersQueue_Type;
+extern PyTypeObject WMultipleConsumersQueue_Type;
 
 typedef struct {
 	PyObject_HEAD

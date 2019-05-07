@@ -27,7 +27,7 @@
 #include "_common/common.h"
 #include "mcqueue.h"
 
-PyTypeObject WMCQueueSubscriber_Type;
+extern PyTypeObject WMCQueueSubscriber_Type;
 
 typedef struct {
 	PyObject_HEAD
