@@ -19,6 +19,7 @@
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "atomic.h"
+#include "_common/static_functions.h"
 
 PyObject* __py_int_add_fn__ = 0;
 
@@ -27,6 +28,7 @@ static void WAtomicCounter_Type_dealloc(WAtomicCounter_Object* self);
 static int WAtomicCounter_Object_init(WAtomicCounter_Object *self, PyObject *args, PyObject *kwargs);
 static PyObject* WAtomicCounter_Object___int__(WAtomicCounter_Object* self, PyObject *args);
 static PyObject* WAtomicCounter_Object_increase_counter(WAtomicCounter_Object* self, PyObject* args);
+static int WAtomicCounter_Object_valid_value(WAtomicCounter_Object* self, PyObject* int_value);
 
 static PyMethodDef WAtomicCounter_Type_methods[] = {
 	{
@@ -75,6 +77,8 @@ static PyObject* WAtomicCounter_Type_new(PyTypeObject* type, PyObject* args, PyO
 		return PyErr_NoMemory();
 	}
 
+	self->__negative = true;
+
 	__WASP_DEBUG_PRINTF__("Object \""__STR_ATOMIC_COUNTER_NAME__"\" was allocated");
 
 	return (PyObject *) self;
@@ -84,17 +88,25 @@ static int WAtomicCounter_Object_init(WAtomicCounter_Object *self, PyObject *arg
 
 	__WASP_DEBUG_PRINTF__("Initialization of \""__STR_ATOMIC_COUNTER_NAME__"\" object");
 
-	static char *kwlist[] = {"value", NULL};
+	static char *kwlist[] = {"value", "negative", NULL};
 	PyObject* value = NULL;
+	int result = 0;
 
-	if (! PyArg_ParseTupleAndKeywords(args, kwargs, "|O!", kwlist,  &PyLong_Type, &value)) {
+	if (! PyArg_ParseTupleAndKeywords(args, kwargs, "|O!p", kwlist, &PyLong_Type, &value, &self->__negative)) {
 		return -1;
 	}
 
 	if (value != NULL) {
+
+		Py_INCREF(value);  // NOTE: values that were parsed as "O" do not increment ref. counter
+		result = WAtomicCounter_Object_valid_value(self, value);
+		if (result != 0) {
+			Py_DECREF(value);
+			return -1;
+		}
+
 		Py_DECREF(self->__int_value);  // NOTE: we no longer need old value
 		self->__int_value = (PyLongObject*) value;
-		Py_INCREF(self->__int_value);  // NOTE: values that were parsed as "O" do not increment ref. counter
 	}
 
 	__WASP_DEBUG_PRINTF__("Object \""__STR_ATOMIC_COUNTER_NAME__"\" was initialized");
@@ -130,6 +142,7 @@ static PyObject* WAtomicCounter_Object_increase_counter(WAtomicCounter_Object* s
 	PyObject* increment = NULL;
 	PyObject* increase_fn_args = NULL;
 	PyObject* increment_result = NULL;
+	int result = 0;
 
 	if (! PyArg_ParseTuple(args, "O!", &PyLong_Type, &increment)){
 		return NULL;
@@ -158,11 +171,36 @@ static PyObject* WAtomicCounter_Object_increase_counter(WAtomicCounter_Object* s
 		return NULL;
 	}
 
+	Py_INCREF(increment_result);
+	result = WAtomicCounter_Object_valid_value(self, increment_result);
+	if (result != 0) {
+		Py_DECREF(increment_result);
+		return NULL;
+	}
+
 	__WASP_DEBUG_PRINTF__("Processing addition result");
 
 	Py_DECREF(self->__int_value);  // NOTE: old value is no longer needed
 	self->__int_value = (PyLongObject*) increment_result;
-
-	Py_INCREF(self->__int_value);  // NOTE: increasing counter for the returning object
 	return (PyObject*) self->__int_value;
+}
+
+static int WAtomicCounter_Object_valid_value(WAtomicCounter_Object* self, PyObject* int_value) {
+	__WASP_DEBUG_FN_CALL__;
+
+	int is_true = 0;
+
+	if (! self->__negative){
+		__WASP_DEBUG_PRINTF__("This counter can not be negative - checking");
+		is_true = __comparision_c_integer_operator(
+			(PyLongObject*) int_value, "__lt__", 0, "Unable to compare the counter with zero", "Comparision error"
+		);
+
+		if (is_true == 1){
+			__WASP_DEBUG_PRINTF__("The spotted value is invalid for the counter");
+			PyErr_SetString(PyExc_ValueError, "This counter instance can not be negative");
+		}
+	}
+
+	return is_true;
 }

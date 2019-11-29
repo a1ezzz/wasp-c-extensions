@@ -23,6 +23,7 @@
 
 #include <Python.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #include "_common/common.h"
 
@@ -33,6 +34,7 @@ extern PyTypeObject WAtomicCounter_Type;
 typedef struct {
 	PyObject_HEAD
 	PyLongObject* __int_value;
+	bool __negative;
 	PyObject *__weakreflist;
 } WAtomicCounter_Object;
 

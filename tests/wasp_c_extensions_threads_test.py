@@ -52,6 +52,20 @@ class TestWAtomicCounter:
 
 		assert(c.__int__() == (self.__threads__ * self.__repeats__))
 
+	def test_negative(self):
+		WAtomicCounter()
+		WAtomicCounter(-7)
+		WAtomicCounter(-7, negative=True)
+		pytest.raises(ValueError, WAtomicCounter, -7, negative=False)
+
+		c = WAtomicCounter(negative=False)
+		assert(c.__int__() == 0)
+
+		c = WAtomicCounter(3, negative=False)
+		assert(c.__int__() == 3)
+		pytest.raises(ValueError, c.increase_counter, -10)
+		assert(c.__int__() == 3)
+
 
 class TestWPThreadEvent:
 
