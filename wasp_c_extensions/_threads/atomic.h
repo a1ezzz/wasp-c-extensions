@@ -26,9 +26,9 @@
 
 #include "_common/common.h"
 
-PyObject* __py_int_add_fn__;
+extern PyObject* __py_int_add_fn__;
 
-PyTypeObject WAtomicCounter_Type;
+extern PyTypeObject WAtomicCounter_Type;
 
 typedef struct {
 	PyObject_HEAD

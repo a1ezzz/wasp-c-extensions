@@ -29,7 +29,7 @@
 
 #include "_common/common.h"
 
-PyTypeObject WPThreadEvent_Type;
+extern PyTypeObject WPThreadEvent_Type;
 
 typedef struct {
 	PyObject_HEAD
