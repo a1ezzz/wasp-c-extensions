@@ -4,9 +4,7 @@ language: python
 matrix:
   include:
 
-# Python 3.3 can not be used with setuptools >= 36.0.0
-
-    - python: "3.4"
+# Python 3.4 can not be used with modern pytest
 
     - python: "3.5"
 
