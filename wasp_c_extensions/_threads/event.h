@@ -27,7 +27,7 @@
 #include <time.h>
 #include <pthread.h>
 
-#include "_common/common.h"
+#include "common.h"
 
 extern PyTypeObject WPThreadEvent_Type;
 

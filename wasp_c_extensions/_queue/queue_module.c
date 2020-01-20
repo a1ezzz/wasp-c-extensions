@@ -20,7 +20,7 @@
 
 #include <Python.h>
 
-#include "_common/common.h"
+#include "common.h"
 #include "mcqueue.h"
 #include "subscriber.h"
 

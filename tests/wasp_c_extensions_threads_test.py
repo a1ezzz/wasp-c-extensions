@@ -59,12 +59,12 @@ class TestWAtomicCounter:
 		pytest.raises(ValueError, WAtomicCounter, -7, negative=False)
 
 		c = WAtomicCounter(negative=False)
-		assert(c.__int__() == 0)
+		assert(int(WAtomicCounter()) == 0)
 
 		c = WAtomicCounter(3, negative=False)
-		assert(c.__int__() == 3)
+		assert(int(c) == 3)
 		pytest.raises(ValueError, c.increase_counter, -10)
-		assert(c.__int__() == 3)
+		assert(int(c) == 3)
 
 
 class TestWPThreadEvent:

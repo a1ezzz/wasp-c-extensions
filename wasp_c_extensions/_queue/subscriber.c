@@ -19,7 +19,6 @@
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "subscriber.h"
-#include "_common/static_functions.h"
 
 static PyObject* WMCQueueSubscriber_Type_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
 static void WMCQueueSubscriber_Type_dealloc(WMCQueueSubscriber_Object* self);
@@ -76,14 +75,19 @@ PyTypeObject WMCQueueSubscriber_Type = {
 static PyObject* WMCQueueSubscriber_Type_new(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
 	__WASP_DEBUG_FN_CALL__;
 
-	WMCQueueSubscriber_Object* self;
-	self = (WMCQueueSubscriber_Object *) type->tp_alloc(type, 0);
+	WMCQueueSubscriber_Object* self = (WMCQueueSubscriber_Object *) type->tp_alloc(type, 0);
 	if (self == NULL) {
 		return PyErr_NoMemory();
 	}
 
+	self->__one = (PyLongObject*) PyLong_FromLong(1);
 	self->__queue = NULL;
 	self->__msg_index = NULL;
+
+    if (self->__one == NULL){
+		Py_DECREF(self);
+		return PyErr_NoMemory();
+    }
 
 	__WASP_DEBUG_PRINTF__("Object \""__STR_MCQUEUE_SUBSCRIBER_NAME__"\" was allocated");
 
@@ -101,13 +105,9 @@ static void WMCQueueSubscriber_Type_dealloc(WMCQueueSubscriber_Object* self) {
 		WMCQueueSubscriber_Object_unsubscribe(self, NULL);
 	}
 
-	if (self->__queue != NULL) {
-		Py_DECREF(self->__queue);
-	}
-
-	if (self->__msg_index != NULL) {
-		Py_DECREF(self->__msg_index);
-	}
+	Py_XDECREF(self->__queue);
+	Py_XDECREF(self->__msg_index);
+    Py_XDECREF(self->__one);
 
 	Py_TYPE(self)->tp_free((PyObject *) self);
 
@@ -154,6 +154,7 @@ static PyObject* WMCQueueSubscriber_Object_next(WMCQueueSubscriber_Object* self,
 	__WASP_DEBUG_FN_CALL__;
 
 	PyObject* msg = NULL;
+	PyLongObject* next_index = NULL;
 
 	if (self->__queue == NULL || self->__msg_index == NULL){
 		PyErr_SetString(PyExc_RuntimeError, "Unable to get next message because subscriber was unsubscribe!");
@@ -168,11 +169,17 @@ static PyObject* WMCQueueSubscriber_Object_next(WMCQueueSubscriber_Object* self,
 		return NULL;
 	}
 
-	if (__reassign_with_c_integer_operator(
-		&self->__msg_index, "__add__", 1, "Unable to increase internal counter"
-	) != 0){
-		return NULL;
-	}
+    next_index = (PyLongObject*) PyLong_Type.tp_as_number->nb_add(
+        (PyObject*) self->__msg_index, (PyObject*) self->__one
+    );
+    if (next_index == NULL){
+		PyErr_SetString(PyExc_RuntimeError, "Unable to increase internal counter");
+		Py_DECREF(msg);
+        return NULL;
+    }
+
+    Py_DECREF(self->__msg_index);
+    self->__msg_index = next_index;
 
 	return msg;
 }

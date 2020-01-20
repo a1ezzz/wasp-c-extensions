@@ -25,14 +25,13 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "_common/common.h"
-
-extern PyObject* __py_int_add_fn__;
+#include "common.h"
 
 extern PyTypeObject WAtomicCounter_Type;
 
 typedef struct {
 	PyObject_HEAD
+	PyLongObject* __zero;  // just cached '0'
 	PyLongObject* __int_value;
 	bool __negative;
 	PyObject *__weakreflist;

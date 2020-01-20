@@ -20,7 +20,7 @@
 
 #include <Python.h>
 
-#include "_common/common.h"
+#include "common.h"
 #include "atomic.h"
 #include "event.h"
 #include "module_functions.h"
@@ -71,13 +71,6 @@ PyMODINIT_FUNC __PYINIT_THREADS_MAIN_FN__ (void) {
 	__WASP_DEBUG_PRINTF__(
 		"Module \""__STR_PACKAGE_NAME__"."__STR_THREADS_MODULE_NAME__"\" initialization call"
 	);
-
-	__py_int_add_fn__ = PyObject_GetAttrString((PyObject*) &PyLong_Type, "__add__");
-        if (__py_int_add_fn__ == NULL) {
-		return NULL;
-        }
-
-        __WASP_DEBUG_PRINTF__("Function \"__py_int_add_fn__\" was initialized");
 
 	PyObject *m;
 
