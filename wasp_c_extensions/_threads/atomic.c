@@ -19,13 +19,19 @@
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "atomic.h"
+#include "static_functions.h"
 
 static PyObject* WAtomicCounter_Type_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
 static void WAtomicCounter_Type_dealloc(WAtomicCounter_Object* self);
 static int WAtomicCounter_Object_init(WAtomicCounter_Object *self, PyObject *args, PyObject *kwargs);
 static PyObject* WAtomicCounter_Object___int__(PyObject* self);
 static PyObject* WAtomicCounter_Object_increase_counter(WAtomicCounter_Object* self, PyObject* args);
-static int WAtomicCounter_Object_valid_value(WAtomicCounter_Object* self, PyLongObject* int_value);
+static PyObject* WAtomicCounter_Object_set(WAtomicCounter_Object* self, PyObject* args);
+static PyObject* WAtomicCounter_Object_test_and_set(WAtomicCounter_Object* self, PyObject* args);
+static PyObject* WAtomicCounter_Object_compare_and_set(WAtomicCounter_Object* self, PyObject* args);
+static int WAtomicCounter_Object_valid_value(PyLongObject* int_value, bool negative);
+
+PyLongObject* __zero = NULL;
 
 static PyMethodDef WAtomicCounter_Type_methods[] = {
 	{
@@ -33,9 +39,59 @@ static PyMethodDef WAtomicCounter_Type_methods[] = {
 		"Increase current counter value and return a result\n"
 		"\n"
 		":param value: increment with which counter value should be increased (may be negative)\n"
-		":return: int"
+		":type value: int\n"
+		"\n"
+		":raise ValueError: if a counter is non-negative and increment will make it negative\n"
+		"\n"
+		":rtype: int"
 	},
-
+	{
+		"set", (PyCFunction) WAtomicCounter_Object_set, METH_VARARGS,
+		"Set a new value and return a previous one. A new value must be non-negative if this counter was created as\n"
+		"non-negative\n"
+		"\n"
+		":param value: new value to set\n"
+		":type value: int\n"
+		"\n"
+		":raise ValueError: if a negative value was requested for a non-negative counter\n"
+		"\n"
+		":rtype: int"
+	},
+	{
+		"test_and_set", (PyCFunction) WAtomicCounter_Object_test_and_set, METH_VARARGS,
+		"Compare current value with a new one. If a comparision result is True - set a new value, and return old\n"
+		"value. None is return if a comparision result is False\n"
+		"\n"
+		":param operation: comparision operation. One of:\n"
+		"\t"WASP_ATOMIC_LT_TEST_NAME" - <\n"
+		"\t"WASP_ATOMIC_LE_TEST_NAME" - <=\n"
+		"\t"WASP_ATOMIC_EQ_TEST_NAME" - == (the most useless one =) )\n"
+		"\t"WASP_ATOMIC_NE_TEST_NAME" - !=\n"
+		"\t"WASP_ATOMIC_GT_TEST_NAME" - >\n"
+		"\t"WASP_ATOMIC_GE_TEST_NAME" - >=\n"
+		"\n"
+		":param value: counter to test and to set\n"
+		":type value: "__STR_ATOMIC_COUNTER_NAME__"\n"
+		"\n"
+		":raise ValueError: if a negative value was requested to test for a non-negative counter\n"
+		"\n"
+		":rtype: None or int\n"
+	},
+	{
+		"compare_and_set", (PyCFunction) WAtomicCounter_Object_compare_and_set, METH_VARARGS,
+		"Compare current value with a test one. If a test value is the same as this counter holds - set a new value,\n"
+		"and return old value. None is return if a test value differs\n"
+		"\n"
+		":param test_value: counter to test\n"
+		":type test_value: "__STR_ATOMIC_COUNTER_NAME__"\n"
+		"\n"
+		":param set_value: counter to set\n"
+		":type set_value: "__STR_ATOMIC_COUNTER_NAME__"\n"
+		"\n"
+		":raise ValueError: if a negative value was requested to set for a non-negative counter\n"
+		"\n"
+		":rtype: None or int\n"
+	},
 	{NULL}
 };
 
@@ -69,14 +125,8 @@ static PyObject* WAtomicCounter_Type_new(PyTypeObject* type, PyObject* args, PyO
 		return PyErr_NoMemory();
 	}
 
-	self->__int_value = (PyLongObject*) PyLong_FromLong(0);  // NOTE: returns new reference
-
-	if (self->__int_value == NULL) {
-		Py_DECREF(self);
-		return PyErr_NoMemory();
-	}
-	self->__zero = self->__int_value;
-	Py_INCREF(self->__zero);
+    Py_INCREF(__zero);
+	self->__int_value = __zero;
 	self->__negative = true;
 
 	__WASP_DEBUG_PRINTF__("Object \""__STR_ATOMIC_COUNTER_NAME__"\" was allocated");
@@ -99,7 +149,7 @@ static int WAtomicCounter_Object_init(WAtomicCounter_Object *self, PyObject *arg
 	if (value != NULL) {
 
 		Py_INCREF(value);  // NOTE: values that were parsed as "O" do not increment ref. counter
-		result = WAtomicCounter_Object_valid_value(self, value);
+		result = WAtomicCounter_Object_valid_value(value, self->__negative);
 		if (result != 0) {
 			Py_DECREF(value);
 			return -1;
@@ -122,7 +172,6 @@ static void WAtomicCounter_Type_dealloc(WAtomicCounter_Object* self) {
         	PyObject_ClearWeakRefs((PyObject *) self);
 
 	Py_XDECREF(self->__int_value);  // NOTE: value must be destroyed
-	Py_XDECREF(self->__zero);  // NOTE: value must be destroyed
 	Py_TYPE(self)->tp_free((PyObject *) self);
 
 	__WASP_DEBUG_PRINTF__("Object \""__STR_ATOMIC_COUNTER_NAME__"\" was deallocated");
@@ -159,7 +208,7 @@ static PyObject* WAtomicCounter_Object_increase_counter(WAtomicCounter_Object* s
 	}
 
 	Py_INCREF(increment_result);
-	if (WAtomicCounter_Object_valid_value(self, increment_result) != 0) {
+	if (WAtomicCounter_Object_valid_value(increment_result, self->__negative) != 0) {
 		Py_DECREF(increment_result);
 		return NULL;
 	}
@@ -169,20 +218,110 @@ static PyObject* WAtomicCounter_Object_increase_counter(WAtomicCounter_Object* s
 	return (PyObject*) self->__int_value;
 }
 
-static int WAtomicCounter_Object_valid_value(WAtomicCounter_Object* self, PyLongObject* int_value) {
+static int WAtomicCounter_Object_valid_value(PyLongObject* int_value, bool negative) {
 	__WASP_DEBUG_FN_CALL__;
 
-	int is_true = 0;
+	int result = 0;
 
-	if (! self->__negative){
+    if (! negative) {
+        result = __long_rich_compare_bool(int_value, __zero, Py_LT);
+        if (result == - 1){
+            PyErr_SetString(PyExc_RuntimeError, "Unable to check zero comparision result");
+        }
+        else if (result == 1){
+            PyErr_SetString(PyExc_ValueError, "This counter can not be negative");
+            __WASP_DEBUG_PRINTF__("The spotted value is invalid for the counter");
+        }
+    }
 
-	    is_true = PyObject_RichCompareBool((PyObject*) int_value, (PyObject*) self->__zero, Py_LT);
+    return result;
+}
 
-		if (is_true == 1){
-			__WASP_DEBUG_PRINTF__("The spotted value is invalid for the counter");
-			PyErr_SetString(PyExc_ValueError, "This counter instance can not be negative");
-		}
+static PyObject* WAtomicCounter_Object_set(WAtomicCounter_Object* self, PyObject* args) {
+    PyLongObject* new_value = NULL;
+    PyLongObject* previous_value = NULL;
+
+	if (! PyArg_ParseTuple(args, "O!", &PyLong_Type, &new_value)){
+		return NULL;
 	}
 
-	return is_true;
+	Py_INCREF(new_value);
+	if (WAtomicCounter_Object_valid_value(new_value, self->__negative) != 0) {
+		Py_DECREF(new_value);
+		return NULL;
+	}
+
+    previous_value = self->__int_value;
+	self->__int_value = new_value;
+    return (PyObject*) previous_value;
+}
+
+static PyObject* WAtomicCounter_Object_test_and_set(WAtomicCounter_Object* self, PyObject* args) {
+
+    WAtomicCounter_Object* test_counter = NULL;
+    PyLongObject* previous_value = NULL;
+    int test_operation = -1;
+    int is_true = -1;
+
+	if (! PyArg_ParseTuple(args, "iO!", &test_operation, &WAtomicCounter_Type, &test_counter)){
+		return NULL;
+	}
+
+    Py_INCREF(test_counter);
+
+	if (WAtomicCounter_Object_valid_value(test_counter->__int_value, self->__negative) != 0) {
+		Py_DECREF(test_counter);
+		return NULL;
+	}
+
+    is_true = __long_rich_compare_bool(self->__int_value, test_counter->__int_value, test_operation);
+	if (is_true == -1){
+		PyErr_SetString(PyExc_RuntimeError, "Unable to check comparision result");
+	    return NULL;
+	}
+	else if (is_true == 0){
+	    Py_RETURN_NONE;
+	}
+
+    previous_value = self->__int_value;
+	self->__int_value = test_counter->__int_value;
+    Py_INCREF(test_counter->__int_value);
+    Py_DECREF(test_counter);
+    return (PyObject*) previous_value;
+}
+
+static PyObject* WAtomicCounter_Object_compare_and_set(WAtomicCounter_Object* self, PyObject* args) {
+    WAtomicCounter_Object* test_counter = NULL;
+    WAtomicCounter_Object* new_counter = NULL;
+    PyLongObject* previous_value = NULL;
+    int is_true = -1;
+
+	if (! PyArg_ParseTuple(args, "O!O!", &WAtomicCounter_Type, &test_counter, &WAtomicCounter_Type, &new_counter)){
+		return NULL;
+	}
+
+    Py_INCREF(new_counter);
+	if (WAtomicCounter_Object_valid_value(new_counter->__int_value, self->__negative) != 0) {
+		Py_DECREF(new_counter);
+		return NULL;
+	}
+
+    Py_INCREF(test_counter);
+    is_true = __long_rich_compare_bool(self->__int_value, test_counter->__int_value, Py_EQ);
+    Py_DECREF(test_counter);
+	if (is_true == -1){
+        Py_DECREF(new_counter);
+		PyErr_SetString(PyExc_RuntimeError, "Unable to check comparision result");
+	    return NULL;
+	}
+	else if (is_true == 0){
+        Py_DECREF(new_counter);
+	    Py_RETURN_NONE;
+	}
+
+    previous_value = self->__int_value;
+	self->__int_value = new_counter->__int_value;
+    Py_INCREF(new_counter->__int_value);
+    Py_DECREF(new_counter);
+    return (PyObject*) previous_value;
 }

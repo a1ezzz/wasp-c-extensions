@@ -27,11 +27,18 @@
 
 #include "common.h"
 
+#define WASP_ATOMIC_LT_TEST_NAME "LT_test"
+#define WASP_ATOMIC_LE_TEST_NAME "LE_test"
+#define WASP_ATOMIC_EQ_TEST_NAME "EQ_test"
+#define WASP_ATOMIC_NE_TEST_NAME "NE_test"
+#define WASP_ATOMIC_GT_TEST_NAME "GT_test"
+#define WASP_ATOMIC_GE_TEST_NAME "GE_test"
+
+extern PyLongObject* __zero;  // just cached '0'
 extern PyTypeObject WAtomicCounter_Type;
 
 typedef struct {
 	PyObject_HEAD
-	PyLongObject* __zero;  // just cached '0'
 	PyLongObject* __int_value;
 	bool __negative;
 	PyObject *__weakreflist;

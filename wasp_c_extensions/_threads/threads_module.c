@@ -74,6 +74,8 @@ PyMODINIT_FUNC __PYINIT_THREADS_MAIN_FN__ (void) {
 
 	PyObject *m;
 
+    __zero = (PyLongObject*) PyLong_FromLong(0);
+
 	if (PyType_Ready(&WAtomicCounter_Type) < 0){
 		return NULL;
 	}
@@ -89,6 +91,13 @@ PyMODINIT_FUNC __PYINIT_THREADS_MAIN_FN__ (void) {
 		return NULL;
 
 	__WASP_DEBUG_PRINTF__("Module \""__STR_PACKAGE_NAME__"."__STR_THREADS_MODULE_NAME__"\" was created");
+
+    PyModule_AddIntConstant(m, WASP_ATOMIC_LT_TEST_NAME, Py_LT);
+    PyModule_AddIntConstant(m, WASP_ATOMIC_LE_TEST_NAME, Py_LE);
+    PyModule_AddIntConstant(m, WASP_ATOMIC_EQ_TEST_NAME, Py_EQ);
+    PyModule_AddIntConstant(m, WASP_ATOMIC_NE_TEST_NAME, Py_NE);
+    PyModule_AddIntConstant(m, WASP_ATOMIC_GT_TEST_NAME, Py_GT);
+    PyModule_AddIntConstant(m, WASP_ATOMIC_GE_TEST_NAME, Py_GE);
 
 	Py_INCREF(&WAtomicCounter_Type);
 	PyModule_AddObject(m, __STR_ATOMIC_COUNTER_NAME__, (PyObject*) &WAtomicCounter_Type);

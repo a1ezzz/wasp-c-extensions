@@ -3,6 +3,7 @@ import pytest
 import threading
 
 from wasp_c_extensions.threads import WAtomicCounter, WPThreadEvent, awareness_wait
+from wasp_c_extensions.threads import LT_test, LE_test, EQ_test, NE_test, GT_test, GE_test
 
 
 class TestWAtomicCounter:
@@ -65,6 +66,71 @@ class TestWAtomicCounter:
 		assert(int(c) == 3)
 		pytest.raises(ValueError, c.increase_counter, -10)
 		assert(int(c) == 3)
+
+	def test_set(self):
+		counter = WAtomicCounter()
+		assert(counter.set(5) == 0)
+		assert(int(counter) == 5)
+
+		counter = WAtomicCounter(1, negative=False)
+		assert(counter.set(7) == 1)
+		assert(int(counter) == 7)
+
+		pytest.raises(ValueError, counter.set, -3)
+
+	__tas_parameters__ = [
+		(LT_test, 3, -1, None, 3),
+		(LT_test, 3, 3, None, 3),
+		(LT_test, 3, 5, 3, 5),
+
+		(LE_test, 3, -1, None, 3),
+		(LE_test, 3, 3, 3, 3),
+		(LE_test, 3, 5, 3, 5),
+
+		(EQ_test, 3, -1, None, 3),
+		(EQ_test, 3, 3, 3, 3),
+		(EQ_test, 3, 5, None, 3),
+
+		(NE_test, 3, -1, 3, -1),
+		(NE_test, 3, 3, None, 3),
+		(NE_test, 3, 5, 3, 5),
+
+		(GT_test, 3, -1, 3, -1),
+		(GT_test, 3, 3, None, 3),
+		(GT_test, 3, 5, None, 3),
+
+		(GE_test, 3, -1, 3, -1),
+		(GE_test, 3, 3, 3, 3),
+		(GE_test, 3, 5, None, 3),
+	]
+
+	@pytest.mark.parametrize("test_op, start_value, compare_value, tas_result, counter_result", __tas_parameters__)
+	def test_tas(self, test_op, start_value, compare_value, tas_result, counter_result):
+		counter = WAtomicCounter(start_value)
+		tas = counter.test_and_set(test_op, WAtomicCounter(compare_value))
+		assert((tas is None and tas_result is None) or tas == tas_result)
+		assert(int(counter) == counter_result)
+
+# 	@pytest.mark.parametrize("test_op", [LT_test, LE_test, EQ_test, NE_test, GT_test, GE_test])
+# 	def test_tas_exceptions(self, test_op):
+# 		pytest.raises(
+# 			ValueError,
+# 			WAtomicCounter(0, negative=False).test_and_set,
+# 			test_op,
+# 			WAtomicCounter(-1)
+# 		)
+#
+# 	def test_cas(self):
+# 		counter = WAtomicCounter(1)
+# 		assert(counter.compare_and_set(WAtomicCounter(5), WAtomicCounter(7)) is None)
+# 		assert(int(counter) == 1)
+#
+# 		assert(counter.compare_and_set(WAtomicCounter(1), WAtomicCounter(-7)) == 1)
+# 		assert(int(counter) == -7)
+# 		#
+# 		# counter = WAtomicCounter(3, negative=False)
+# 		# pytest.raises(ValueError, counter.compare_and_set, WAtomicCounter(3), WAtomicCounter(-5))
+# 		# assert(int(counter) == 3)
 
 
 class TestWPThreadEvent:
