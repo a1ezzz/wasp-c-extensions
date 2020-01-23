@@ -18,8 +18,8 @@
 //You should have received a copy of the GNU Lesser General Public License
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef __WASP_C_EXTENSIONS__COMMON_COMMON_H__
-#define __WASP_C_EXTENSIONS__COMMON_COMMON_H__
+#ifndef __WASP_C_EXTENSIONS__COMMON_H__
+#define __WASP_C_EXTENSIONS__COMMON_H__
 
 #define __STR_FN__(M) #M
 #define __STR_FN_CALL__(M) __STR_FN__(M)
@@ -58,4 +58,4 @@
 #define __STR_MCQUEUE_NAME__ __STR_FN_CALL__(__MCQUEUE_NAME__)
 #define __STR_MCQUEUE_SUBSCRIBER_NAME__ __STR_FN_CALL__(__MCQUEUE_SUBSCRIBER_NAME__)
 
-#endif // __WASP_C_EXTENSIONS__COMMON_COMMON_H__
+#endif // __WASP_C_EXTENSIONS__COMMON_H__
