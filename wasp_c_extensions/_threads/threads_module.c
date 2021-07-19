@@ -29,16 +29,14 @@ static PyMethodDef threads_methods[] = {
 
 	{
 		"awareness_wait", (PyCFunction) awareness_wait, METH_VARARGS | METH_KEYWORDS,
-		"Wait for the specified event to come. But before \"wait\" method will be called. An \"sync_fn\" "
-		"callback will be executed and if the result is True, then the event's \"set\" method is called "
-		"and then this function returns True, otherwise \"clear\" method is called and the event will "
-		"be awaited\n"
+		"Synchronize event's state and wait for this event to come. At first event is cleared and then if "
+		"a \"sync_fn\" function returns True event will be set. If not - event will be awaited\n"
 		"\n"
 		":param event: an event to synchronize with and to wait for\n"
 		":type event: Event | "__STR_PTHREAD_EVENT_NAME__"\n"
 		"\n"
 		":param sync_fn: a callable object that must return 'bool' object. This object may help to "
-		"synchronize the event with an external environment\n"
+		"synchronize the event\n"
 		":type sync_fn: callable\n"
 		"\n"
 		":param timeout: if defined then this is a time in seconds during which an event will be awaited "
