@@ -25,11 +25,25 @@
 #define __STR_FN_CALL__(M) __STR_FN__(M)
 #define __STR_PACKAGE_NAME__ __STR_FN_CALL__(__PACKAGE_NAME__)
 
-#ifdef __WASP_DEBUG__
-#define __WASP_DEBUG_PRINTF__(msg,...) printf("At file: "__FILE__", at line: %i: "msg"\n", __LINE__, ##__VA_ARGS__)
+#ifdef __WASP_DEBUG_ENABLED__
+#define __WASP_DEBUG_PRINTF__(msg,...) printf( \
+    "[Module: " __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__ \
+    "][File: " __FILE__ \
+    "][Line: %i]: " msg \
+    "\n", __LINE__, \
+    ##__VA_ARGS__)
+
+#define __WASP_DEBUG__(msg,...) printf( \
+    "[Module: " __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__ \
+    "][File: " __FILE__ \
+    "][Line: %i]: " msg \
+    "\n", __LINE__, \
+    ##__VA_ARGS__)
+
 #else
 #define __WASP_DEBUG_PRINTF__(msg,...)
-#endif // __WASP_DEBUG__
+#define __WASP_DEBUG__(msg,...)
+#endif // __WASP_DEBUG_ENABLED__
 
 #define __WASP_DEBUG_FN_CALL__ __WASP_DEBUG_PRINTF__("Function call: %s", __PRETTY_FUNCTION__)
 
@@ -57,5 +71,8 @@
 
 #define __STR_MCQUEUE_NAME__ __STR_FN_CALL__(__MCQUEUE_NAME__)
 #define __STR_MCQUEUE_SUBSCRIBER_NAME__ __STR_FN_CALL__(__MCQUEUE_SUBSCRIBER_NAME__)
+
+#define __STR_MODULE_NAME__ __STR_FN_CALL__(__MODULE_NAME__)
+#define __PYINIT_MAIN_FN__ __PYINIT_MODULE_NAME_GEN_FN_CALL__(__MODULE_NAME__)
 
 #endif // __WASP_C_EXTENSIONS__COMMON_H__
