@@ -45,9 +45,6 @@ PyObject* wasp__queue__CMCQueue_new(PyTypeObject* type, PyObject* args, PyObject
     }
     self->__queue = new queue_type();
 
-    Py_INCREF(self);  // TODO: temp; it is require to resolve the 'pure virtual method called' error
-    // by the correct interlinkage of queue and its items
-
     __WASP_DEBUG__("Object \""  __STR_CMCQUEUE_NAME__ "\" was allocated");
     return (PyObject *) self;
 }
@@ -81,19 +78,23 @@ PyObject* wasp__queue__CMCQueue_push(CMCQueue_Object* self, PyObject* args){
 
 PyObject* wasp__queue__CMCQueue_subscribe(CMCQueue_Object* self, PyObject* args){
 
-    __WASP_DEBUG__("Subscribing to \"" __STR_CMCQUEUE_NAME__ "\" instance");;
+    __WASP_DEBUG__("Subscribing to \"" __STR_CMCQUEUE_NAME__ "\" instance")
 
     CMCQueueItem_Object* queue_item = (CMCQueueItem_Object*) wasp__queue__CMCQueueItem_new(
         wasp__queue__CMCQueueItem_type(), NULL, NULL
     );
 
-    queue_item->__queue = self->__queue;
+    Py_INCREF(self);
+
+    queue_item->__py_queue = self;
     queue_item->__last_item = (static_cast<queue_type*>(self->__queue))->subscribe();
 
     return (PyObject*) queue_item;
 }
 
 // CMCQueueItem functions
+
+static int wasp__queue__CMCQueueItem_unsubscribe_impl(CMCQueueItem_Object* self);
 
 PyObject* wasp__queue__CMCQueueItem_new(PyTypeObject* type, PyObject* args, PyObject* kwargs){
     __WASP_DEBUG__("Allocation of \"" __STR_CMCQUEUE_ITEM_NAME__ "\" object");
@@ -102,6 +103,7 @@ PyObject* wasp__queue__CMCQueueItem_new(PyTypeObject* type, PyObject* args, PyOb
     if (self == NULL) {
         return PyErr_NoMemory();
     }
+    self->__py_queue = NULL;
     self->__last_item = NULL;
 
     __WASP_DEBUG__("Object \""  __STR_CMCQUEUE_ITEM_NAME__ "\" was allocated");
@@ -109,22 +111,48 @@ PyObject* wasp__queue__CMCQueueItem_new(PyTypeObject* type, PyObject* args, PyOb
 }
 
 int wasp__queue__CMCQueueItem_init(CMCQueueItem_Object *self, PyObject *args, PyObject *kwargs){
-    PyErr_SetString(PyExc_RuntimeError, "The \"" __STR_CMCQUEUE_ITEM_NAME__ "\" object shouldn't be created directly. Please call for a subscription");
+    PyErr_SetString(
+        PyExc_RuntimeError,
+        "The \"" __STR_CMCQUEUE_ITEM_NAME__ "\" object shouldn't be created directly. Please call for a subscription"
+    );
     return -1;
 }
 
 void wasp__queue__CMCQueueItem_dealloc(CMCQueueItem_Object* self){
     __WASP_DEBUG__("Deallocation of a queue item object");
+    wasp__queue__CMCQueueItem_unsubscribe_impl(self);
+    Py_TYPE(self)->tp_free((PyObject *) self);
+    __WASP_DEBUG__("Object \"" __STR_CMCQUEUE_ITEM_NAME__ "\" was deallocated");
+}
 
-    if (self->__last_item && self->__queue){  // TODO: '&& self->__queue' check is not required if there is a good counter for a queue
+static int wasp__queue__CMCQueueItem_unsubscribe_impl(CMCQueueItem_Object* self){
+    __WASP_DEBUG__("Unsubscribe queue item (implementation)");
 
-        static_cast<queue_type*>(self->__queue)->unsubscribe(  // TODO: !!! note that there may be no queue at the moment
-           static_cast<const QueueItem*>(self->__last_item)
-        );
-        self->__last_item = NULL;
+    CMCQueue_Object* py_queue = (CMCQueue_Object*) self->__py_queue;
+
+    if (py_queue){
+        if (self->__last_item){
+            static_cast<queue_type*>(py_queue->__queue)->unsubscribe(
+               static_cast<const QueueItem*>(self->__last_item)
+            );
+            self->__last_item = NULL;
+        }
+
+        Py_DECREF(py_queue);
+        self->__py_queue = NULL;
+        return 0;
     }
 
-    Py_TYPE(self)->tp_free((PyObject *) self);
+    return -1;
+}
 
-    __WASP_DEBUG__("Object \"" __STR_CMCQUEUE_ITEM_NAME__ "\" was deallocated");
+PyObject* wasp__queue__CMCQueueItem_unsubscribe(CMCQueueItem_Object* self, PyObject* args){
+    __WASP_DEBUG__("Unsubscribe queue item");
+
+    if(! wasp__queue__CMCQueueItem_unsubscribe_impl(self)){
+        Py_RETURN_NONE;
+    }
+
+    PyErr_SetString(PyExc_RuntimeError, "Queue item may be unsubscribed only once");
+    return NULL;
 }

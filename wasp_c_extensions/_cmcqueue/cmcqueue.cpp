@@ -119,8 +119,13 @@ CMCBaseQueue::CMCBaseQueue(IQueueBuffer* b):
 
 CMCBaseQueue::~CMCBaseQueue()
 {
-
     __WASP_DEBUG__("BaseQueue is about to be destroyed")
+
+#ifdef __WASP_DEBUG_ENABLED__
+    if (this->newest_subscribes.load(std::memory_order_seq_cst)){
+            __WASP_DEBUG__("Warning! This queue has subscribers still! External pointers will corrupt");
+    }
+#endif
 
     const QueueItem* next_item_ptr = this->buffer->head();
     CMCQueueItem* item_ptr;
@@ -177,14 +182,14 @@ const QueueItem* CMCBaseQueue::push(const void* payload){
 }
 
 const QueueItem* CMCBaseQueue::subscribe(){
-
+    __WASP_DEBUG__("Subscribe to a queue");
     this->newest_subscribes.fetch_add(1, std::memory_order_seq_cst);
     const QueueItem* result = this->push_(NULL, MSG_CMD_SUBSCRIPTION);
     return result;
 }
 
 void CMCBaseQueue::unsubscribe(const QueueItem* latest_read_ptr){
-    __WASP_DEBUG__("Unsubscribing object");
+    __WASP_DEBUG__("Unsubscribe from a queue");
 
     CMCQueueItem* unsubscribe_item_ptr = this->push_(NULL, MSG_CMD_UNSUBSCRIPTION);
     CMCQueueItem* item_ptr;

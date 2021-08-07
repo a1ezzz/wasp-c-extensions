@@ -38,6 +38,16 @@ static PyMethodDef CMCQueue_methods[] = {
 	{NULL}
 };
 
+static PyMethodDef CMCQueueItem_methods[] = {
+
+	{
+		"unsubscribe", (PyCFunction) wasp__queue__CMCQueueItem_unsubscribe, METH_NOARGS,
+		"\"UnSubscribe\" description.\n"
+	},
+
+	{NULL}
+};
+
 static PyTypeObject CMCQueue_Type = {
 	PyVarObject_HEAD_INIT(NULL, 0)
 	.tp_name = __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__ "." __STR_CMCQUEUE_NAME__,
@@ -63,7 +73,7 @@ static PyTypeObject CMCQueueItem_Type = {
 	.tp_new = wasp__queue__CMCQueueItem_new,
 	.tp_init = (initproc) wasp__queue__CMCQueueItem_init,
 	.tp_dealloc = (destructor) wasp__queue__CMCQueueItem_dealloc,
-//	.tp_methods = CMCQueue_methods,
+	.tp_methods = CMCQueueItem_methods,
 };
 
 static struct PyModuleDef module = {
