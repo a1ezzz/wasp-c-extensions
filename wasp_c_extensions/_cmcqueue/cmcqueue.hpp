@@ -22,7 +22,10 @@
 #define __WASP_C_EXTENSIONS__CMCQUEUE_CMCQUEUE_HPP__
 
 #include <atomic>
-    #include <cstddef>
+#include <cstddef>
+#include <cstdio>
+
+#include "common.h"
 
 namespace wasp::queue {
 
@@ -185,7 +188,9 @@ template<typename T, void (*F)(QueueItem*) = dummy_item_cleanup_function> class 
             {}
 
             virtual ~Item(){
-                F(this);
+                if (this->type == MSG_USERS_PAYLOAD){
+                    F(this);
+                }
             }
     };
 
@@ -204,7 +209,9 @@ template<typename T, void (*F)(QueueItem*) = dummy_item_cleanup_function> class 
             push_handler(p),
             item_cleanup_handler(c)
         {};
-        virtual ~CMCQueue(){};
+        virtual ~CMCQueue(){
+            __WASP_DEBUG__("Queue is about to be destroyed")
+        };
 
         const QueueItem* push(const void* payload){
             const QueueItem* result = CMCBaseQueue::push(payload);

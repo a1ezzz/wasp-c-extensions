@@ -30,6 +30,11 @@ static PyMethodDef CMCQueue_methods[] = {
 		"\"Push\" description.\n"
 	},
 
+	{
+		"subscribe", (PyCFunction) wasp__queue__CMCQueue_subscribe, METH_NOARGS,
+		"\"Subscribe\" description.\n"
+	},
+
 	{NULL}
 };
 
@@ -45,6 +50,20 @@ static PyTypeObject CMCQueue_Type = {
 	.tp_new = wasp__queue__CMCQueue_new,
 	.tp_dealloc = (destructor) wasp__queue__CMCQueue_dealloc,
 	.tp_methods = CMCQueue_methods,
+};
+
+static PyTypeObject CMCQueueItem_Type = {
+	PyVarObject_HEAD_INIT(NULL, 0)
+	.tp_name = __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__ "." __STR_CMCQUEUE_ITEM_NAME__,
+	.tp_basicsize = sizeof(CMCQueueItem_Type),
+	.tp_itemsize = 0,
+	.tp_flags = Py_TPFLAGS_DEFAULT,
+	.tp_doc = "Simple description placement",
+
+	.tp_new = wasp__queue__CMCQueueItem_new,
+	.tp_init = (initproc) wasp__queue__CMCQueueItem_init,
+	.tp_dealloc = (destructor) wasp__queue__CMCQueueItem_dealloc,
+//	.tp_methods = CMCQueue_methods,
 };
 
 static struct PyModuleDef module = {
@@ -65,7 +84,15 @@ PyMODINIT_FUNC __PYINIT_MAIN_FN__ (void) {
     if (! add_type_to_module(m, &CMCQueue_Type, __STR_CMCQUEUE_NAME__)){
         return NULL;
     }
+
+    if (! add_type_to_module(m, &CMCQueueItem_Type, __STR_CMCQUEUE_ITEM_NAME__)){
+        return NULL;
+    }
 	__WASP_DEBUG__("Module was created");
 
 	return m;
+}
+
+PyTypeObject* wasp__queue__CMCQueueItem_type(){
+    return &CMCQueueItem_Type;
 }

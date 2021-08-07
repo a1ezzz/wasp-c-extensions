@@ -26,6 +26,7 @@
 #include "common.h"
 
 #define __STR_CMCQUEUE_NAME__ __STR_FN_CALL__(__CMCQUEUE_NAME__)
+#define __STR_CMCQUEUE_ITEM_NAME__ __STR_FN_CALL__(__CMCQUEUE_ITEM_NAME__)
 
 typedef struct {
 	PyObject_HEAD
@@ -33,9 +34,22 @@ typedef struct {
 	PyObject* __weakreflist;
 } CMCQueue_Object;
 
+typedef struct {
+	PyObject_HEAD
+	void* __queue;
+	const void* __last_item;
+} CMCQueueItem_Object;
+
 PyObject* wasp__queue__CMCQueue_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
 void wasp__queue__CMCQueue_dealloc(CMCQueue_Object* self);
 
 PyObject* wasp__queue__CMCQueue_push(CMCQueue_Object* self, PyObject* args);
+PyObject* wasp__queue__CMCQueue_subscribe(CMCQueue_Object* self, PyObject* args);
+
+PyTypeObject* wasp__queue__CMCQueueItem_type();
+
+PyObject* wasp__queue__CMCQueueItem_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
+int wasp__queue__CMCQueueItem_init(CMCQueueItem_Object *self, PyObject *args, PyObject *kwargs);
+void wasp__queue__CMCQueueItem_dealloc(CMCQueueItem_Object* self);
 
 #endif // __WASP_C_EXTENSIONS__CMCQUEUE_CMCQUEUE_WRAPPER_H__

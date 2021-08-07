@@ -29,16 +29,16 @@
 #define __WASP_DEBUG_PRINTF__(msg,...) printf( \
     "[Module: " __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__ \
     "][File: " __FILE__ \
-    "][Line: %i]: " msg \
-    "\n", __LINE__, \
-    ##__VA_ARGS__)
+    "][Line: %i][Function: %s]:" msg \
+    "\n", __LINE__, __PRETTY_FUNCTION__, \
+    ##__VA_ARGS__);
 
 #define __WASP_DEBUG__(msg,...) printf( \
     "[Module: " __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__ \
     "][File: " __FILE__ \
-    "][Line: %i]: " msg \
-    "\n", __LINE__, \
-    ##__VA_ARGS__)
+    "][Line: %i][Function: %s]:" msg \
+    "\n", __LINE__, __PRETTY_FUNCTION__, \
+    ##__VA_ARGS__);
 
 #else
 #define __WASP_DEBUG_PRINTF__(msg,...)

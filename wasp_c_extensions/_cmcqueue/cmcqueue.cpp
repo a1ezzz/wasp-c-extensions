@@ -34,6 +34,8 @@ StretchedBuffer::~StretchedBuffer(){
     // TODO: BE WARN ABOUT CONCURRENCY BETWEEN append/reduce and this destructor
     // TODO: assert that tail is NULL?!
 
+    __WASP_DEBUG__("Buffer is about to be destroyed")
+
     delete this->zero_node;
 }
 
@@ -117,6 +119,9 @@ CMCBaseQueue::CMCBaseQueue(IQueueBuffer* b):
 
 CMCBaseQueue::~CMCBaseQueue()
 {
+
+    __WASP_DEBUG__("BaseQueue is about to be destroyed")
+
     const QueueItem* next_item_ptr = this->buffer->head();
     CMCQueueItem* item_ptr;
 
@@ -172,12 +177,15 @@ const QueueItem* CMCBaseQueue::push(const void* payload){
 }
 
 const QueueItem* CMCBaseQueue::subscribe(){
+
     this->newest_subscribes.fetch_add(1, std::memory_order_seq_cst);
     const QueueItem* result = this->push_(NULL, MSG_CMD_SUBSCRIPTION);
     return result;
 }
 
 void CMCBaseQueue::unsubscribe(const QueueItem* latest_read_ptr){
+    __WASP_DEBUG__("Unsubscribing object");
+
     CMCQueueItem* unsubscribe_item_ptr = this->push_(NULL, MSG_CMD_UNSUBSCRIPTION);
     CMCQueueItem* item_ptr;
 
