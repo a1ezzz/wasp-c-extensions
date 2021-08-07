@@ -1,4 +1,4 @@
-// wasp_c_extensions/_queue/queue_cpp_functions.cpp
+// wasp_c_extensions/_queue/cmcqueue_wrapper.h
 //
 //Copyright (C) 2021 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
@@ -18,35 +18,24 @@
 //You should have received a copy of the GNU Lesser General Public License
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
-extern "C" {
+#ifndef __WASP_C_EXTENSIONS__CMCQUEUE_CMCQUEUE_WRAPPER_H__
+#define __WASP_C_EXTENSIONS__CMCQUEUE_CMCQUEUE_WRAPPER_H__
 
 #include <Python.h>
 
 #include "common.h"
 
-static PyMethodDef module_functions[] = {
+#define __STR_CMCQUEUE_NAME__ __STR_FN_CALL__(__CMCQUEUE_NAME__)
 
-	{NULL, NULL, 0, NULL}
-};
+typedef struct {
+	PyObject_HEAD
+	void* __queue;
+	PyObject* __weakreflist;
+} CMCQueue_Object;
 
-static struct PyModuleDef module = {
-	PyModuleDef_HEAD_INIT,
-	.m_name = __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__,
-	.m_doc = "This is the \"" __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__"\" module",
-	.m_size = -1,
-	module_functions
-};
+PyObject* wasp__queue__CMCQueue_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
+void wasp__queue__CMCQueue_dealloc(CMCQueue_Object* self);
 
-PyMODINIT_FUNC __PYINIT_MAIN_FN__ (void) {
+PyObject* wasp__queue__CMCQueue_push(CMCQueue_Object* self, PyObject* args);
 
-	__WASP_DEBUG__("Module is about to initialize");
-
-	PyObject* m = PyModule_Create(&module);
-	if (m == NULL)
-		return NULL;
-
-	__WASP_DEBUG__("Module was created");
-	return m;
-}
-
-}  // extern "C"
+#endif // __WASP_C_EXTENSIONS__CMCQUEUE_CMCQUEUE_WRAPPER_H__

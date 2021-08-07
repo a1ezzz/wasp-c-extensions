@@ -18,8 +18,8 @@
 //You should have received a copy of the GNU Lesser General Public License
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef __WASP_C_EXTENSIONS__QUEUE_CMCQUEUE_HPP__
-#define __WASP_C_EXTENSIONS__QUEUE_CMCQUEUE_HPP__
+#ifndef __WASP_C_EXTENSIONS__CMCQUEUE_CMCQUEUE_HPP__
+#define __WASP_C_EXTENSIONS__CMCQUEUE_CMCQUEUE_HPP__
 
 #include <atomic>
     #include <cstddef>
@@ -118,7 +118,21 @@ class CMCQueueItem:
         virtual ~CMCQueueItem(){};
 };
 
-class CMCBaseQueue{
+
+class ICMCQueue{
+    public:
+        virtual ~ICMCQueue(){};
+
+        virtual const QueueItem* push(const void* payload) = 0; // TODO: add note that NULL as payload is prohibbited
+        virtual const QueueItem* pull(const QueueItem*) = 0;
+        virtual bool has_next(const QueueItem*) = 0;
+        virtual const QueueItem* subscribe() = 0;
+        virtual void unsubscribe(const QueueItem*) = 0;
+};
+
+class CMCBaseQueue:
+    public ICMCQueue
+{
 
     IQueueBuffer* buffer;
 
@@ -141,12 +155,15 @@ class CMCBaseQueue{
 
         const QueueItem* push(const void* payload); // TODO: add note that NULL as payload is prohibbited
         const QueueItem* pull(const QueueItem*);
+        bool has_next(const QueueItem*);
 
         const QueueItem* subscribe();
         void unsubscribe(const QueueItem*);
 };
 
-template<typename T> class CMCQueue:
+inline static void dummy_item_cleanup_function(QueueItem*){}
+
+template<typename T, void (*F)(QueueItem*) = dummy_item_cleanup_function> class CMCQueue:
     private T,
     public CMCBaseQueue
 {
@@ -165,22 +182,39 @@ template<typename T> class CMCQueue:
                 QueueItem(payload),
                 T::BufferItem(payload),
                 CMCQueueItem(payload, type)
-        {}
+            {}
+
+            virtual ~Item(){
+                F(this);
+            }
     };
+
+    void (*push_handler)(ICMCQueue*);
+    void (*item_cleanup_handler)(QueueItem*);
 
     protected:
         virtual CMCQueueItem* queue_item(const void* payload, CMCItemType type){
-            return new CMCQueue<T>::Item(payload, type);
+            return new CMCQueue<T, F>::Item(payload, type);
         }
 
     public:
-        CMCQueue():
+        CMCQueue(void (*p)(ICMCQueue*) = NULL, void (*c)(QueueItem*) = NULL):
             T(),
-            CMCBaseQueue(this)
+            CMCBaseQueue(this),
+            push_handler(p),
+            item_cleanup_handler(c)
         {};
         virtual ~CMCQueue(){};
+
+        const QueueItem* push(const void* payload){
+            const QueueItem* result = CMCBaseQueue::push(payload);
+            if (result && this->push_handler){
+                this->push_handler(this);
+            }
+            return result;
+        }
 };
 
 };  // namespace wasp::queue
 
-#endif // __WASP_C_EXTENSIONS__QUEUE_CMCQUEUE_HPP__
+#endif // __WASP_C_EXTENSIONS__CMCQUEUE_CMCQUEUE_HPP__

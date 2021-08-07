@@ -257,3 +257,7 @@ const QueueItem* CMCBaseQueue::pull(const QueueItem* last_item)
 
     return next_item ? next_item : last_item;
 }
+
+bool CMCBaseQueue::has_next(const QueueItem* item){
+    return (this->buffer->next(item) != NULL);
+}

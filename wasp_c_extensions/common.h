@@ -1,4 +1,4 @@
-// wasp_c_extensions/_common/common.h
+// wasp_c_extensions/common.h
 //
 //Copyright (C) 2018 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
