@@ -113,7 +113,7 @@ CMCBaseQueue::CMCBaseQueue(IQueueBuffer* b):
     buffer(b),
     oldest_subscribes(0),
     newest_subscribes(0),
-    messages(0),
+    __messages(0),
     is_cleaning(false)
 {}
 
@@ -150,7 +150,7 @@ CMCQueueItem* CMCBaseQueue::push_(const void* payload, CMCItemType type){
     CMCQueueItem* item_ptr = this->queue_item(payload, type);
     item_ptr->reads.store(0, std::memory_order_seq_cst);  // force, because of untrusted source
     this->buffer->append(item_ptr);
-    this->messages.fetch_add(1, std::memory_order_seq_cst);
+    this->__messages.fetch_add(1, std::memory_order_seq_cst);
     return item_ptr;
 }
 
@@ -194,12 +194,12 @@ void CMCBaseQueue::unsubscribe(const QueueItem* latest_read_ptr){
     CMCQueueItem* unsubscribe_item_ptr = this->push_(NULL, MSG_CMD_UNSUBSCRIPTION);
     CMCQueueItem* item_ptr;
 
-    latest_read_ptr = this->buffer->next(latest_read_ptr);
-    while (latest_read_ptr && latest_read_ptr != unsubscribe_item_ptr){
+    do {
         item_ptr = this->cast_item(latest_read_ptr);
         item_ptr->reads.fetch_add(1, std::memory_order_seq_cst);
         latest_read_ptr = this->buffer->next(latest_read_ptr);
     }
+    while (latest_read_ptr && latest_read_ptr != unsubscribe_item_ptr);
 
     if (! latest_read_ptr){
         // end is reached. Queue is corrupted
@@ -208,13 +208,17 @@ void CMCBaseQueue::unsubscribe(const QueueItem* latest_read_ptr){
 
     unsubscribe_item_ptr->reads.fetch_add(1, std::memory_order_seq_cst);
     this->newest_subscribes.fetch_sub(1, std::memory_order_seq_cst);
+
+    this->cleanup();
 }
 
 void CMCBaseQueue::cleanup(){
+    __WASP_DEBUG__("Cleaning a queue");
+
     const QueueItem* next_item_ptr;
     CMCQueueItem* item_ptr;
     size_t reads = 0, subscribers = 0;
-    bool is_cleaning = this->is_cleaning.test_and_set(std::memory_order_seq_cst);
+    bool is_dirty = true, is_cleaning = this->is_cleaning.test_and_set(std::memory_order_seq_cst);
 
     if (is_cleaning){
         return;
@@ -225,34 +229,37 @@ void CMCBaseQueue::cleanup(){
 
     while (next_item_ptr){
         item_ptr = this->cast_item(next_item_ptr);
-
         reads = item_ptr->reads.load(std::memory_order_seq_cst);
-        if (reads < subscribers){
-            break;
-        }
-
-        if (reads > subscribers){
-            // TODO: do something bad
-        }
 
         switch (item_ptr->type){
             case MSG_USERS_PAYLOAD:
+                is_dirty = (reads < subscribers);
                 break;
             case MSG_CMD_SUBSCRIPTION:
-                this->oldest_subscribes.fetch_add(1, std::memory_order_seq_cst);
-                subscribers++;
+                is_dirty = (reads <= subscribers);
+                if (! is_dirty){
+                    this->oldest_subscribes.fetch_add(1, std::memory_order_seq_cst);
+                    subscribers++;
+                }
                 break;
             case MSG_CMD_UNSUBSCRIPTION:
-                this->oldest_subscribes.fetch_sub(1, std::memory_order_seq_cst);
-                subscribers--;
+                is_dirty = ((reads + 1) < subscribers);
+                if (! is_dirty){
+                    this->oldest_subscribes.fetch_sub(1, std::memory_order_seq_cst);
+                    subscribers--;
+                }
                 break;
             default:
                 // TODO: throw exception for unhandled type
                 break;
         };
 
+        if (is_dirty){
+            break;
+        }
+
         this->buffer->reduce();
-        this->messages.fetch_sub(1, std::memory_order_seq_cst);
+        this->__messages.fetch_sub(1, std::memory_order_seq_cst);
         delete item_ptr;
         next_item_ptr = this->buffer->head();
     } // while (next_item_ptr)
@@ -273,4 +280,8 @@ const QueueItem* CMCBaseQueue::pull(const QueueItem* last_item)
 
 bool CMCBaseQueue::has_next(const QueueItem* item){
     return (this->buffer->next(item) != NULL);
+}
+
+size_t CMCBaseQueue::messages(){
+    return this->__messages.load(std::memory_order_seq_cst);
 }

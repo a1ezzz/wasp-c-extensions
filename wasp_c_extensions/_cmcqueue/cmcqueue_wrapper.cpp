@@ -92,6 +92,11 @@ PyObject* wasp__queue__CMCQueue_subscribe(CMCQueue_Object* self, PyObject* args)
     return (PyObject*) queue_item;
 }
 
+PyObject* wasp__queue__CMCQueue_messages(CMCQueue_Object* self, PyObject* args){
+    size_t messages = static_cast<queue_type*>(self->__queue)->messages();
+    return PyLong_FromSize_t(messages);
+}
+
 // CMCQueueItem functions
 
 static int wasp__queue__CMCQueueItem_unsubscribe_impl(CMCQueueItem_Object* self);
@@ -155,4 +160,26 @@ PyObject* wasp__queue__CMCQueueItem_unsubscribe(CMCQueueItem_Object* self, PyObj
 
     PyErr_SetString(PyExc_RuntimeError, "Queue item may be unsubscribed only once");
     return NULL;
+}
+
+PyObject* wasp__queue__CMCQueueItem_pull(CMCQueueItem_Object* self, PyObject* args){
+    CMCQueue_Object* py_queue = (CMCQueue_Object*) self->__py_queue;
+    const QueueItem* last_item = (const QueueItem*) self->__last_item;
+
+    if ((! py_queue) || (! last_item)){
+        PyErr_SetString(PyExc_RuntimeError, "Unable to pull unsubscribed object");
+        return NULL;
+    }
+
+    last_item = static_cast<queue_type*>(py_queue->__queue)->pull(last_item);
+    self->__last_item = last_item;
+
+    if (last_item){
+        if (last_item->payload){  // not the pointer switch
+            Py_INCREF(last_item->payload);
+            return (PyObject*) last_item->payload;
+        }
+    }
+
+    Py_RETURN_NONE;
 }

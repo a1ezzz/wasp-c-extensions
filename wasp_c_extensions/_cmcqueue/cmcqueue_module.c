@@ -35,6 +35,10 @@ static PyMethodDef CMCQueue_methods[] = {
 		"\"Subscribe\" description.\n"
 	},
 
+	{
+		"messages", (PyCFunction) wasp__queue__CMCQueue_messages, METH_NOARGS,
+		"\"Messages\" description.\n"
+	},
 	{NULL}
 };
 
@@ -43,6 +47,11 @@ static PyMethodDef CMCQueueItem_methods[] = {
 	{
 		"unsubscribe", (PyCFunction) wasp__queue__CMCQueueItem_unsubscribe, METH_NOARGS,
 		"\"UnSubscribe\" description.\n"
+	},
+
+	{
+		"pull", (PyCFunction) wasp__queue__CMCQueueItem_pull, METH_NOARGS,
+		"\"Pull\" description.\n"
 	},
 
 	{NULL}

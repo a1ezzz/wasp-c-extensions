@@ -141,7 +141,7 @@ class CMCBaseQueue:
 
     std::atomic<size_t> oldest_subscribes;  // counter for cleaning
     std::atomic<size_t> newest_subscribes;  // counter for push optimization
-    std::atomic<size_t> messages;  // approximate message counter
+    std::atomic<size_t> __messages;  // approximate message counter
     std::atomic_flag is_cleaning;
 
     CMCQueueItem* cast_item(const QueueItem*);
@@ -162,6 +162,8 @@ class CMCBaseQueue:
 
         const QueueItem* subscribe();
         void unsubscribe(const QueueItem*);
+
+        size_t messages();
 };
 
 inline static void dummy_item_cleanup_function(QueueItem*){}
@@ -209,9 +211,7 @@ template<typename T, void (*F)(QueueItem*) = dummy_item_cleanup_function> class 
             push_handler(p),
             item_cleanup_handler(c)
         {};
-        virtual ~CMCQueue(){
-            __WASP_DEBUG__("Queue is about to be destroyed")
-        };
+        virtual ~CMCQueue(){};
 
         const QueueItem* push(const void* payload){
             const QueueItem* result = CMCBaseQueue::push(payload);

@@ -45,6 +45,7 @@ void wasp__queue__CMCQueue_dealloc(CMCQueue_Object* self);
 
 PyObject* wasp__queue__CMCQueue_push(CMCQueue_Object* self, PyObject* args);
 PyObject* wasp__queue__CMCQueue_subscribe(CMCQueue_Object* self, PyObject* args);
+PyObject* wasp__queue__CMCQueue_messages(CMCQueue_Object* self, PyObject* args);
 
 PyTypeObject* wasp__queue__CMCQueueItem_type();
 
@@ -53,5 +54,6 @@ int wasp__queue__CMCQueueItem_init(CMCQueueItem_Object *self, PyObject *args, Py
 void wasp__queue__CMCQueueItem_dealloc(CMCQueueItem_Object* self);
 
 PyObject* wasp__queue__CMCQueueItem_unsubscribe(CMCQueueItem_Object* self, PyObject* args);
+PyObject* wasp__queue__CMCQueueItem_pull(CMCQueueItem_Object* self, PyObject* args);
 
 #endif // __WASP_C_EXTENSIONS__CMCQUEUE_CMCQUEUE_WRAPPER_H__
