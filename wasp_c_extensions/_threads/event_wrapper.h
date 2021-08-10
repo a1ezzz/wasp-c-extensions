@@ -1,6 +1,6 @@
-// wasp_c_extensions/_threads/event.h
+// wasp_c_extensions/_threads/event_wrapper.h
 //
-//Copyright (C) 2018 the wasp-c-extensions authors and contributors
+//Copyright (C) 2021 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
 //
 //This file is part of wasp-c-extensions.
@@ -18,26 +18,26 @@
 //You should have received a copy of the GNU Lesser General Public License
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef __WASP_C_EXTENSIONS__THREADS_EVENT_H__
-#define __WASP_C_EXTENSIONS__THREADS_EVENT_H__
+#ifndef __WASP_C_EXTENSIONS__THREADS_EVENT_WRAPPER_H__
+#define __WASP_C_EXTENSIONS__THREADS_EVENT_WRAPPER_H__
 
 #include <Python.h>
-#include <stddef.h>
-#include <stdbool.h>
-#include <time.h>
-#include <pthread.h>
 
 #include "common.h"
 
-extern PyTypeObject WPThreadEvent_Type;
-
 typedef struct {
 	PyObject_HEAD
-	bool __is_set;
-	double error_poll_timeout;
-	pthread_mutex_t __mutex;
-	pthread_cond_t  __conditional_variable;
+	void* __event;
 	PyObject *__weakreflist;
-} WPThreadEvent_Object;
+} Event_Object;
 
-#endif // __WASP_C_EXTENSIONS__THREADS_EVENT_H__
+PyObject* wasp__queue__Event_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
+int wasp__queue__Event_init(Event_Object *self, PyObject *args, PyObject *kwargs);
+void wasp__queue__Event_dealloc(Event_Object* self);
+
+PyObject* wasp__queue__Event_wait(Event_Object* self, PyObject* args, PyObject *kwargs);
+PyObject* wasp__queue__Event_clear(Event_Object* self, PyObject* args);
+PyObject* wasp__queue__Event_set(Event_Object* self, PyObject* args);
+PyObject* wasp__queue__Event_is_set(Event_Object* self, PyObject* args);
+
+#endif // __WASP_C_EXTENSIONS__THREADS_EVENT_WRAPPER_H__

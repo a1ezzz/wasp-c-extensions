@@ -264,7 +264,7 @@ void CMCBaseQueue::cleanup(){
         next_item_ptr = this->buffer->head();
     } // while (next_item_ptr)
 
-    this->is_cleaning.clear();
+    this->is_cleaning.clear(std::memory_order_seq_cst);
 }
 
 const QueueItem* CMCBaseQueue::pull(const QueueItem* last_item)
