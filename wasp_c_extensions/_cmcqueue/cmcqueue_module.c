@@ -115,3 +115,7 @@ PyMODINIT_FUNC __PYINIT_MAIN_FN__ (void) {
 PyTypeObject* wasp__queue__CMCQueueItem_type(){
     return &CMCQueueItem_Type;
 }
+
+PyTypeObject* wasp__queue__CMCQueue_type(){
+    return &CMCQueue_Type;
+}
