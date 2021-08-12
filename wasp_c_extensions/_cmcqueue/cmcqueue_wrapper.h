@@ -40,6 +40,8 @@ typedef struct {
 	const void* __last_item;
 } CMCQueueItem_Object;
 
+PyTypeObject* wasp__queue__CMCQueue_type();
+
 PyObject* wasp__queue__CMCQueue_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
 void wasp__queue__CMCQueue_dealloc(CMCQueue_Object* self);
 

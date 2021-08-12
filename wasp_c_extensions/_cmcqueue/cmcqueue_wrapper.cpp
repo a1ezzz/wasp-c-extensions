@@ -176,7 +176,7 @@ PyObject* wasp__queue__CMCQueueItem_pull(CMCQueueItem_Object* self, PyObject* ar
 
     if (last_item){
         if (last_item->payload){  // not the pointer switch
-            Py_INCREF(last_item->payload);
+            Py_INCREF(last_item->payload);  // TODO: double check -- payload is 'increfed' already
             return (PyObject*) last_item->payload;
         }
     }
