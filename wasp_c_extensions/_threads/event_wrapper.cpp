@@ -26,7 +26,11 @@ extern "C" {
 
 #include "event.hpp"
 
-using namespace wasp::event;
+#ifndef __DEFAULT_SIGNALS_POLLING_TIMEOUT__
+#define __DEFAULT_SIGNALS_POLLING_TIMEOUT__ 10
+#endif
+
+using namespace wasp::threads;
 
 PyObject* wasp__queue__Event_new(PyTypeObject* type, PyObject* args, PyObject* kwargs){
     Event_Object* self = (Event_Object *) type->tp_alloc(type, 0);

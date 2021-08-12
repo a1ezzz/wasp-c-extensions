@@ -26,7 +26,7 @@
 #include <mutex>
 #include <chrono>
 
-namespace wasp::event {
+namespace wasp::threads {
 
 class Event {
 
@@ -46,6 +46,6 @@ class Event {
         bool is_set();
 };
 
-};  // namespace wasp::event
+};  // namespace wasp::threads
 
 #endif // __WASP_C_EXTENSIONS__THREADS_EVENT_HPP__

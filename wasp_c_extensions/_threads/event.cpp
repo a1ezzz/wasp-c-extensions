@@ -20,7 +20,7 @@
 
 #include "event.hpp"
 
-using namespace wasp::event;
+using namespace wasp::threads;
 
 Event::Event(std::chrono::milliseconds t):
     __is_set(false),
