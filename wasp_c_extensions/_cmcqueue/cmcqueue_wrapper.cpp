@@ -164,22 +164,42 @@ PyObject* wasp__queue__CMCQueueItem_unsubscribe(CMCQueueItem_Object* self, PyObj
 
 PyObject* wasp__queue__CMCQueueItem_pull(CMCQueueItem_Object* self, PyObject* args){
     CMCQueue_Object* py_queue = (CMCQueue_Object*) self->__py_queue;
-    const QueueItem* last_item = (const QueueItem*) self->__last_item;
+    const QueueItem *last_item = (const QueueItem*) self->__last_item, *next_item = NULL;
 
     if ((! py_queue) || (! last_item)){
         PyErr_SetString(PyExc_RuntimeError, "Unable to pull unsubscribed object");
         return NULL;
     }
 
-    last_item = static_cast<queue_type*>(py_queue->__queue)->pull(last_item);
-    self->__last_item = last_item;
+    next_item = static_cast<queue_type*>(py_queue->__queue)->pull(last_item);
+    if (next_item == last_item){
+        Py_RETURN_NONE;  // TODO: or raise something
+    }
 
-    if (last_item){
-        if (last_item->payload){  // not the pointer switch
-            Py_INCREF(last_item->payload);  // TODO: double check -- payload is 'increfed' already
-            return (PyObject*) last_item->payload;
+    self->__last_item = next_item;
+
+    if (next_item){
+        if (next_item->payload){  // not the pointer switch
+            Py_INCREF(next_item->payload);  // TODO: double check -- payload is 'increfed' already
+            return (PyObject*) next_item->payload;
         }
     }
 
     Py_RETURN_NONE;
+}
+
+PyObject* wasp__queue__CMCQueueItem_has_next(CMCQueueItem_Object* self, PyObject* args){
+    CMCQueue_Object* py_queue = (CMCQueue_Object*) self->__py_queue;
+    const QueueItem *last_item = (const QueueItem*) self->__last_item;
+
+    if ((! py_queue) || (! last_item)){
+        PyErr_SetString(PyExc_RuntimeError, "Unable to pull unsubscribed object");
+        return NULL;
+    }
+
+    if (static_cast<queue_type*>(py_queue->__queue)->has_next(last_item)){
+        Py_RETURN_TRUE;
+    }
+
+    Py_RETURN_FALSE;
 }

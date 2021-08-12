@@ -196,30 +196,17 @@ template<typename T, void (*F)(QueueItem*) = dummy_item_cleanup_function> class 
             }
     };
 
-    void (*push_handler)(ICMCQueue*);
-    void (*item_cleanup_handler)(QueueItem*);
-
     protected:
         virtual CMCQueueItem* queue_item(const void* payload, CMCItemType type){
             return new CMCQueue<T, F>::Item(payload, type);
         }
 
     public:
-        CMCQueue(void (*p)(ICMCQueue*) = NULL, void (*c)(QueueItem*) = NULL):
+        CMCQueue():
             T(),
-            CMCBaseQueue(this),
-            push_handler(p),
-            item_cleanup_handler(c)
+            CMCBaseQueue(this)
         {};
         virtual ~CMCQueue(){};
-
-        const QueueItem* push(const void* payload){
-            const QueueItem* result = CMCBaseQueue::push(payload);
-            if (result && this->push_handler){
-                this->push_handler(this);
-            }
-            return result;
-        }
 };
 
 };  // namespace wasp::queue

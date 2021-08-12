@@ -54,6 +54,12 @@ static PyMethodDef CMCQueueItem_methods[] = {
 		"\"Pull\" description.\n"
 	},
 
+
+	{
+		"has_next", (PyCFunction) wasp__queue__CMCQueueItem_has_next, METH_NOARGS,
+		"\"Has next\" description.\n"
+	},
+
 	{NULL}
 };
 

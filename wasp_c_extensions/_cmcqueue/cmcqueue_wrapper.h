@@ -57,5 +57,6 @@ void wasp__queue__CMCQueueItem_dealloc(CMCQueueItem_Object* self);
 
 PyObject* wasp__queue__CMCQueueItem_unsubscribe(CMCQueueItem_Object* self, PyObject* args);
 PyObject* wasp__queue__CMCQueueItem_pull(CMCQueueItem_Object* self, PyObject* args);
+PyObject* wasp__queue__CMCQueueItem_has_next(CMCQueueItem_Object* self, PyObject* args);
 
 #endif // __WASP_C_EXTENSIONS__CMCQUEUE_CMCQUEUE_WRAPPER_H__
