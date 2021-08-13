@@ -26,17 +26,17 @@
 static PyMethodDef CMCQueue_methods[] = {
 
 	{
-		"push", (PyCFunction) wasp__queue__CMCQueue_push, METH_VARARGS,
+		"push", (PyCFunction) wasp__cmcqueue__CMCQueue_push, METH_VARARGS,
 		"\"Push\" description.\n"
 	},
 
 	{
-		"subscribe", (PyCFunction) wasp__queue__CMCQueue_subscribe, METH_NOARGS,
+		"subscribe", (PyCFunction) wasp__cmcqueue__CMCQueue_subscribe, METH_NOARGS,
 		"\"Subscribe\" description.\n"
 	},
 
 	{
-		"messages", (PyCFunction) wasp__queue__CMCQueue_messages, METH_NOARGS,
+		"messages", (PyCFunction) wasp__cmcqueue__CMCQueue_messages, METH_NOARGS,
 		"\"Messages\" description.\n"
 	},
 	{NULL}
@@ -45,18 +45,18 @@ static PyMethodDef CMCQueue_methods[] = {
 static PyMethodDef CMCQueueItem_methods[] = {
 
 	{
-		"unsubscribe", (PyCFunction) wasp__queue__CMCQueueItem_unsubscribe, METH_NOARGS,
+		"unsubscribe", (PyCFunction) wasp__cmcqueue__CMCQueueItem_unsubscribe, METH_NOARGS,
 		"\"UnSubscribe\" description.\n"
 	},
 
 	{
-		"pull", (PyCFunction) wasp__queue__CMCQueueItem_pull, METH_NOARGS,
+		"pull", (PyCFunction) wasp__cmcqueue__CMCQueueItem_pull, METH_NOARGS,
 		"\"Pull\" description.\n"
 	},
 
 
 	{
-		"has_next", (PyCFunction) wasp__queue__CMCQueueItem_has_next, METH_NOARGS,
+		"has_next", (PyCFunction) wasp__cmcqueue__CMCQueueItem_has_next, METH_NOARGS,
 		"\"Has next\" description.\n"
 	},
 
@@ -72,8 +72,8 @@ static PyTypeObject CMCQueue_Type = {
 	.tp_doc = "Simple description placement",
 
 	.tp_weaklistoffset = offsetof(CMCQueue_Object, __weakreflist),
-	.tp_new = wasp__queue__CMCQueue_new,
-	.tp_dealloc = (destructor) wasp__queue__CMCQueue_dealloc,
+	.tp_new = wasp__cmcqueue__CMCQueue_new,
+	.tp_dealloc = (destructor) wasp__cmcqueue__CMCQueue_dealloc,
 	.tp_methods = CMCQueue_methods,
 };
 
@@ -85,9 +85,9 @@ static PyTypeObject CMCQueueItem_Type = {
 	.tp_flags = Py_TPFLAGS_DEFAULT,
 	.tp_doc = "Simple description placement",
 
-	.tp_new = wasp__queue__CMCQueueItem_new,
-	.tp_init = (initproc) wasp__queue__CMCQueueItem_init,
-	.tp_dealloc = (destructor) wasp__queue__CMCQueueItem_dealloc,
+	.tp_new = wasp__cmcqueue__CMCQueueItem_new,
+	.tp_init = (initproc) wasp__cmcqueue__CMCQueueItem_init,
+	.tp_dealloc = (destructor) wasp__cmcqueue__CMCQueueItem_dealloc,
 	.tp_methods = CMCQueueItem_methods,
 };
 
@@ -118,10 +118,6 @@ PyMODINIT_FUNC __PYINIT_MAIN_FN__ (void) {
 	return m;
 }
 
-PyTypeObject* wasp__queue__CMCQueueItem_type(){
+PyTypeObject* wasp__cmcqueue__CMCQueueItem_type(){
     return &CMCQueueItem_Type;
-}
-
-PyTypeObject* wasp__queue__CMCQueue_type(){
-    return &CMCQueue_Type;
 }

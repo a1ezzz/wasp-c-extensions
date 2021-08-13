@@ -131,6 +131,8 @@ class ICMCQueue{
         virtual bool has_next(const QueueItem*) = 0;
         virtual const QueueItem* subscribe() = 0;
         virtual void unsubscribe(const QueueItem*) = 0;
+
+        virtual size_t messages() = 0;
 };
 
 class CMCBaseQueue:

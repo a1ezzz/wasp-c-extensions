@@ -40,23 +40,21 @@ typedef struct {
 	const void* __last_item;
 } CMCQueueItem_Object;
 
-PyTypeObject* wasp__queue__CMCQueue_type();
+PyObject* wasp__cmcqueue__CMCQueue_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
+void wasp__cmcqueue__CMCQueue_dealloc(CMCQueue_Object* self);
 
-PyObject* wasp__queue__CMCQueue_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
-void wasp__queue__CMCQueue_dealloc(CMCQueue_Object* self);
+PyObject* wasp__cmcqueue__CMCQueue_push(CMCQueue_Object* self, PyObject* args);
+PyObject* wasp__cmcqueue__CMCQueue_subscribe(CMCQueue_Object* self, PyObject* args);
+PyObject* wasp__cmcqueue__CMCQueue_messages(CMCQueue_Object* self, PyObject* args);
 
-PyObject* wasp__queue__CMCQueue_push(CMCQueue_Object* self, PyObject* args);
-PyObject* wasp__queue__CMCQueue_subscribe(CMCQueue_Object* self, PyObject* args);
-PyObject* wasp__queue__CMCQueue_messages(CMCQueue_Object* self, PyObject* args);
+PyTypeObject* wasp__cmcqueue__CMCQueueItem_type();
 
-PyTypeObject* wasp__queue__CMCQueueItem_type();
+PyObject* wasp__cmcqueue__CMCQueueItem_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
+int wasp__cmcqueue__CMCQueueItem_init(CMCQueueItem_Object *self, PyObject *args, PyObject *kwargs);
+void wasp__cmcqueue__CMCQueueItem_dealloc(CMCQueueItem_Object* self);
 
-PyObject* wasp__queue__CMCQueueItem_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
-int wasp__queue__CMCQueueItem_init(CMCQueueItem_Object *self, PyObject *args, PyObject *kwargs);
-void wasp__queue__CMCQueueItem_dealloc(CMCQueueItem_Object* self);
-
-PyObject* wasp__queue__CMCQueueItem_unsubscribe(CMCQueueItem_Object* self, PyObject* args);
-PyObject* wasp__queue__CMCQueueItem_pull(CMCQueueItem_Object* self, PyObject* args);
-PyObject* wasp__queue__CMCQueueItem_has_next(CMCQueueItem_Object* self, PyObject* args);
+PyObject* wasp__cmcqueue__CMCQueueItem_unsubscribe(CMCQueueItem_Object* self, PyObject* args);
+PyObject* wasp__cmcqueue__CMCQueueItem_pull(CMCQueueItem_Object* self, PyObject* args);
+PyObject* wasp__cmcqueue__CMCQueueItem_has_next(CMCQueueItem_Object* self, PyObject* args);
 
 #endif // __WASP_C_EXTENSIONS__CMCQUEUE_CMCQUEUE_WRAPPER_H__
