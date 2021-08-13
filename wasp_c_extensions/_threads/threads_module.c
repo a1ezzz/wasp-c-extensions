@@ -66,7 +66,7 @@ static struct PyModuleDef threads_module = {
 
 static PyMethodDef Event_methods[] = {
     {
-        "wait", (PyCFunction) wasp__queue__Event_wait, METH_VARARGS | METH_KEYWORDS,
+        "wait", (PyCFunction) wasp__threads__Event_wait, METH_VARARGS | METH_KEYWORDS,
         "Wait for a event to come. If the event flag was set and is not cleared then this function returns\n"
         "immediately. Returns True if event occurred and False otherwise\n"
         "\n"
@@ -75,21 +75,21 @@ static PyMethodDef Event_methods[] = {
     },
 
     {
-        "clear", (PyCFunction) wasp__queue__Event_clear, METH_NOARGS,
+        "clear", (PyCFunction) wasp__threads__Event_clear, METH_NOARGS,
         "Clear the event flag\n"
         "\n"
         ":return: None"
 	},
 
     {
-        "set", (PyCFunction) wasp__queue__Event_set, METH_NOARGS,
+        "set", (PyCFunction) wasp__threads__Event_set, METH_NOARGS,
         "Set the event flag\n"
         "\n"
         ":return: None"
     },
 
     {
-        "is_set", (PyCFunction) wasp__queue__Event_is_set, METH_NOARGS,
+        "is_set", (PyCFunction) wasp__threads__Event_is_set, METH_NOARGS,
         "Return the event flag state. True if this flag is set, False - otherwise\n"
         "\n"
         ":return: bool"
@@ -106,9 +106,9 @@ PyTypeObject WPThreadEvent_Type = {
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
 
-    .tp_new = wasp__queue__Event_new,
-    .tp_init = (initproc) wasp__queue__Event_init,
-    .tp_dealloc = (destructor) wasp__queue__Event_dealloc,
+    .tp_new = wasp__threads__Event_new,
+    .tp_init = (initproc) wasp__threads__Event_init,
+    .tp_dealloc = (destructor) wasp__threads__Event_dealloc,
     .tp_methods = Event_methods,
     .tp_weaklistoffset = offsetof(Event_Object, __weakreflist)
 };

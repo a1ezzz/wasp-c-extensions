@@ -59,7 +59,7 @@ bool Event::wait(std::chrono::milliseconds wait_timeout)
 
     if (
         (this->max_timeout > zero_timeout) &&
-        ((wait_timeout < zero_timeout) || (this->max_timeout < wait_timeout))
+        ((wait_timeout <= zero_timeout) || (this->max_timeout < wait_timeout))
     ){
         wait_timeout = this->max_timeout;
     }

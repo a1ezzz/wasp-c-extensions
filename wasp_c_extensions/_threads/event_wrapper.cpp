@@ -27,12 +27,12 @@ extern "C" {
 #include "event.hpp"
 
 #ifndef __DEFAULT_SIGNALS_POLLING_TIMEOUT__
-#define __DEFAULT_SIGNALS_POLLING_TIMEOUT__ 10
+#define __DEFAULT_SIGNALS_POLLING_TIMEOUT__ 5 * 1000
 #endif
 
 using namespace wasp::threads;
 
-PyObject* wasp__queue__Event_new(PyTypeObject* type, PyObject* args, PyObject* kwargs){
+PyObject* wasp__threads__Event_new(PyTypeObject* type, PyObject* args, PyObject* kwargs){
     Event_Object* self = (Event_Object *) type->tp_alloc(type, 0);
     if (self == NULL) {
         return PyErr_NoMemory();
@@ -43,7 +43,7 @@ PyObject* wasp__queue__Event_new(PyTypeObject* type, PyObject* args, PyObject* k
     return (PyObject *) self;
 }
 
-int wasp__queue__Event_init(Event_Object *self, PyObject *args, PyObject *kwargs){
+int wasp__threads__Event_init(Event_Object *self, PyObject *args, PyObject *kwargs){
 
 	static const char* kwlist[] = {"py_poll_timeout", NULL};
 	PyObject* py_poll_timeout = NULL;
@@ -74,7 +74,7 @@ int wasp__queue__Event_init(Event_Object *self, PyObject *args, PyObject *kwargs
 	return 0;
 }
 
-void wasp__queue__Event_dealloc(Event_Object* self){
+void wasp__threads__Event_dealloc(Event_Object* self){
 
 	if (self->__weakreflist != NULL)
         	PyObject_ClearWeakRefs((PyObject *) self);
@@ -87,24 +87,24 @@ void wasp__queue__Event_dealloc(Event_Object* self){
 	__WASP_DEBUG__("Event object was deallocated");
 }
 
-PyObject* wasp__queue__Event_clear(Event_Object* self, PyObject* args){
+PyObject* wasp__threads__Event_clear(Event_Object* self, PyObject* args){
     (static_cast<Event*>(self->__event))->clear();
     Py_RETURN_NONE;
 }
 
-PyObject* wasp__queue__Event_set(Event_Object* self, PyObject* args){
+PyObject* wasp__threads__Event_set(Event_Object* self, PyObject* args){
     (static_cast<Event*>(self->__event))->set();
     Py_RETURN_NONE;
 }
 
-PyObject* wasp__queue__Event_is_set(Event_Object* self, PyObject* args){
+PyObject* wasp__threads__Event_is_set(Event_Object* self, PyObject* args){
     if ((static_cast<Event*>(self->__event))->is_set()){
         Py_RETURN_TRUE;
     }
     Py_RETURN_FALSE;
 }
 
-PyObject* wasp__queue__Event_wait(Event_Object* self, PyObject* args, PyObject *kwargs){
+PyObject* wasp__threads__Event_wait(Event_Object* self, PyObject* args, PyObject *kwargs){
 
     std::chrono::time_point<std::chrono::steady_clock> clock;
     std::chrono::milliseconds wait_timeout;

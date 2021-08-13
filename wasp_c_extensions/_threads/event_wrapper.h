@@ -31,13 +31,13 @@ typedef struct {
 	PyObject *__weakreflist;
 } Event_Object;
 
-PyObject* wasp__queue__Event_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
-int wasp__queue__Event_init(Event_Object *self, PyObject *args, PyObject *kwargs);
-void wasp__queue__Event_dealloc(Event_Object* self);
+PyObject* wasp__threads__Event_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
+int wasp__threads__Event_init(Event_Object *self, PyObject *args, PyObject *kwargs);
+void wasp__threads__Event_dealloc(Event_Object* self);
 
-PyObject* wasp__queue__Event_wait(Event_Object* self, PyObject* args, PyObject *kwargs);
-PyObject* wasp__queue__Event_clear(Event_Object* self, PyObject* args);
-PyObject* wasp__queue__Event_set(Event_Object* self, PyObject* args);
-PyObject* wasp__queue__Event_is_set(Event_Object* self, PyObject* args);
+PyObject* wasp__threads__Event_wait(Event_Object* self, PyObject* args, PyObject *kwargs);
+PyObject* wasp__threads__Event_clear(Event_Object* self, PyObject* args);
+PyObject* wasp__threads__Event_set(Event_Object* self, PyObject* args);
+PyObject* wasp__threads__Event_is_set(Event_Object* self, PyObject* args);
 
 #endif // __WASP_C_EXTENSIONS__THREADS_EVENT_WRAPPER_H__
