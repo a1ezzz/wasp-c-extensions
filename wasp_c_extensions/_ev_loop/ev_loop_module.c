@@ -24,25 +24,27 @@
 
 #include "ev_loop_wrapper.h"
 
+static void wasp__ev_loop__module_free(void*);
+
 static PyMethodDef EventLoop_methods[] = {
 
     {
-        "notify", (PyCFunction) wasp__queue__EventLoop_notify, METH_VARARGS,
+        "notify", (PyCFunction) wasp__ev_loop__EventLoop_notify, METH_VARARGS,
         "\"Notify\" description.\n"
     },
 
     {
-        "process_event", (PyCFunction) wasp__queue__EventLoop_process_event, METH_NOARGS,
+        "process_event", (PyCFunction) wasp__ev_loop__EventLoop_process_event, METH_NOARGS,
         "\"Process event\" description.\n"
     },
 
     {
-        "start_loop", (PyCFunction) wasp__queue__EventLoop_start_loop, METH_NOARGS,
+        "start_loop", (PyCFunction) wasp__ev_loop__EventLoop_start_loop, METH_NOARGS,
         "\"Start loop\" description.\n"
     },
 
     {
-        "stop_loop", (PyCFunction) wasp__queue__EventLoop_stop_loop, METH_NOARGS,
+        "stop_loop", (PyCFunction) wasp__ev_loop__EventLoop_stop_loop, METH_NOARGS,
         "\"Stop loop\" description.\n"
     },
 
@@ -57,9 +59,9 @@ static PyTypeObject EventLoop_Type = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "Simple description placement",
 
-    .tp_new = wasp__queue__EventLoop_new,
-    .tp_init = (initproc) wasp__queue__EventLoop_init,
-    .tp_dealloc = (destructor) wasp__queue__EventLoop_dealloc,
+    .tp_new = wasp__ev_loop__EventLoop_new,
+    .tp_init = (initproc) wasp__ev_loop__EventLoop_init,
+    .tp_dealloc = (destructor) wasp__ev_loop__EventLoop_dealloc,
     .tp_methods = EventLoop_methods,
 };
 
@@ -68,11 +70,31 @@ static struct PyModuleDef module = {
     .m_name = __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__,
     .m_doc = "This is the \"" __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__"\" module",
     .m_size = -1,
+    .m_free = wasp__ev_loop__module_free,
 };
 
 PyMODINIT_FUNC __PYINIT_MAIN_FN__ (void) {
 
     __WASP_DEBUG__("Module is about to initialize");
+
+    wasp__ev_loop__cmcqueue_module = PyImport_ImportModule(  // new ref or NULL with exception
+        __STR_PACKAGE_NAME__ "." __STR_FN_CALL__(__CMCMODULE_NAME__)
+    );
+
+    if (! wasp__ev_loop__cmcqueue_module){
+        return NULL;
+    }
+
+    wasp__ev_loop__cmcqueue_type = PyObject_GetAttrString(  // new ref
+        wasp__ev_loop__cmcqueue_module, __STR_FN_CALL__(__CMCQUEUE_NAME__)
+    );
+
+    if (! wasp__ev_loop__cmcqueue_type){
+        PyErr_SetString(PyExc_RuntimeError, "Required type isn't available");
+        Py_DECREF(wasp__ev_loop__cmcqueue_module);
+        wasp__ev_loop__cmcqueue_module = NULL;
+        return NULL;
+    }
 
     PyObject* m = PyModule_Create(&module);
     if (m == NULL)
@@ -85,4 +107,16 @@ PyMODINIT_FUNC __PYINIT_MAIN_FN__ (void) {
     __WASP_DEBUG__("Module was created");
 
     return m;
+}
+
+void wasp__ev_loop__module_free(void* m){
+    if (wasp__ev_loop__cmcqueue_type){
+        Py_DECREF(wasp__ev_loop__cmcqueue_type);
+        wasp__ev_loop__cmcqueue_type = NULL;
+    }
+
+    if (wasp__ev_loop__cmcqueue_module){
+        Py_DECREF(wasp__ev_loop__cmcqueue_module);
+        wasp__ev_loop__cmcqueue_module = NULL;
+    }
 }

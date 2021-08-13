@@ -33,13 +33,16 @@ typedef struct {
 	void* __event_loop;
 } EventLoop_Object;
 
-PyObject* wasp__queue__EventLoop_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
-int wasp__queue__EventLoop_init(EventLoop_Object *self, PyObject *args, PyObject *kwargs);
-void wasp__queue__EventLoop_dealloc(EventLoop_Object* self);
+extern PyObject* wasp__ev_loop__cmcqueue_module;
+extern PyObject* wasp__ev_loop__cmcqueue_type;
 
-PyObject* wasp__queue__EventLoop_notify(EventLoop_Object* self, PyObject* args);
-PyObject* wasp__queue__EventLoop_process_event(EventLoop_Object* self, PyObject* args);
-PyObject* wasp__queue__EventLoop_start_loop(EventLoop_Object* self, PyObject* args);
-PyObject* wasp__queue__EventLoop_stop_loop(EventLoop_Object* self, PyObject* args);
+PyObject* wasp__ev_loop__EventLoop_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
+int wasp__ev_loop__EventLoop_init(EventLoop_Object *self, PyObject *args, PyObject *kwargs);
+void wasp__ev_loop__EventLoop_dealloc(EventLoop_Object* self);
+
+PyObject* wasp__ev_loop__EventLoop_notify(EventLoop_Object* self, PyObject* args);
+PyObject* wasp__ev_loop__EventLoop_process_event(EventLoop_Object* self, PyObject* args);
+PyObject* wasp__ev_loop__EventLoop_start_loop(EventLoop_Object* self, PyObject* args);
+PyObject* wasp__ev_loop__EventLoop_stop_loop(EventLoop_Object* self, PyObject* args);
 
 #endif // __WASP_C_EXTENSIONS__EV_LOOP_EV_LOOP_WRAPPER_H__

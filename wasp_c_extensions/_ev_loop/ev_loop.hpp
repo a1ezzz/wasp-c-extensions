@@ -39,6 +39,7 @@ class EventLoopBase{
         virtual ~EventLoopBase();
 
         virtual bool process_event() = 0;
+        virtual void wait_event();
 
         virtual void start_loop();
         virtual void stop_loop();
@@ -78,7 +79,7 @@ class EventLoop:
 
         bool process_event(){
             const wasp::queue::QueueItem* next_event = this->queue->pull(this->last_event);
-            if (! next_event){
+            if ((!next_event) || (next_event == this->last_event)){
                 this->trigger.clear();
                 if (this->queue->has_next(this->last_event)){
                     return this->process_event();  // one more try
@@ -94,6 +95,10 @@ class EventLoop:
 
             this->last_event = next_event;
             return true;
+        }
+
+        void wait_event(){
+            EventLoopBase::wait_event();
         }
 };
 

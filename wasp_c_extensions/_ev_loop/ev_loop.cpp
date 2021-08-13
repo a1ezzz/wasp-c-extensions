@@ -32,6 +32,10 @@ EventLoopBase::~EventLoopBase(){
     this->queue->unsubscribe(this->last_event);
 }
 
+void EventLoopBase::wait_event(){
+    this->trigger.wait();
+}
+
 void EventLoopBase::start_loop(){
     bool is_running = this->is_running.test_and_set(std::memory_order_seq_cst);
 
@@ -40,9 +44,9 @@ void EventLoopBase::start_loop(){
         return;
     }
 
-    while(! this->is_running.test_and_set(std::memory_order_seq_cst)){
+    while(this->is_running.test_and_set(std::memory_order_seq_cst)){
         if (! this->process_event()){
-            this->trigger.wait();
+            this->wait_event();
         }
     }
 
