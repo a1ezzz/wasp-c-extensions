@@ -24,15 +24,15 @@
 #include <Python.h>
 #include <stddef.h>
 
-#include "_common/common.h"
+#include "common.h"
 
 extern PyTypeObject WMultipleConsumersQueue_Type;
 
 typedef struct {
 	PyObject_HEAD
 	PyObject* __callback;
+	Py_ssize_t __subscribers;
 	PyLongObject* __index_delta;
-	PyLongObject* __subscribers;
 	PyListObject* __queue;
 	PyObject* __weakreflist;
 } WMultipleConsumersQueue_Object;

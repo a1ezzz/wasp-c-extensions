@@ -1,6 +1,6 @@
-// wasp_c_extensions/_threads/atomic.h
+// wasp_c_extensions/module_common.h
 //
-//Copyright (C) 2018 the wasp-c-extensions authors and contributors
+//Copyright (C) 2021 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
 //
 //This file is part of wasp-c-extensions.
@@ -18,30 +18,23 @@
 //You should have received a copy of the GNU Lesser General Public License
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef __WASP_C_EXTENSIONS__THREADS_ATOMIC_H__
-#define __WASP_C_EXTENSIONS__THREADS_ATOMIC_H__
+#ifndef __WASP_C_EXTENSIONS__MODULE_COMMON_H__
+#define __WASP_C_EXTENSIONS__MODULE_COMMON_H__
 
 #include <Python.h>
-#include <stddef.h>
-#include <stdbool.h>
 
 #include "common.h"
 
-#define WASP_ATOMIC_LT_TEST_NAME "LT_test"
-#define WASP_ATOMIC_LE_TEST_NAME "LE_test"
-#define WASP_ATOMIC_EQ_TEST_NAME "EQ_test"
-#define WASP_ATOMIC_NE_TEST_NAME "NE_test"
-#define WASP_ATOMIC_GT_TEST_NAME "GT_test"
-#define WASP_ATOMIC_GE_TEST_NAME "GE_test"
+static PyObject* add_type_to_module(PyObject* module, PyTypeObject* type, const char* type_name){
+	if (PyType_Ready(type) < 0){
+		__WASP_DEBUG__("Unable to prepare \"%s\"", type_name);
+		return NULL;
+	}
+	__WASP_DEBUG__("Type \"%s\" prepared", type_name);
+	Py_INCREF(type);
+	PyModule_AddObject(module, type_name, (PyObject*) type);
+    __WASP_DEBUG__("Type \"%s\" was linked", type_name);
+    return module;
+}
 
-extern PyLongObject* __zero;  // just cached '0'
-extern PyTypeObject WAtomicCounter_Type;
-
-typedef struct {
-	PyObject_HEAD
-	PyLongObject* __int_value;
-	bool __negative;
-	PyObject *__weakreflist;
-} WAtomicCounter_Object;
-
-#endif // __WASP_C_EXTENSIONS__THREADS_ATOMIC_H__
+#endif // __WASP_C_EXTENSIONS__MODULE_COMMON_H__

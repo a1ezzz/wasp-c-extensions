@@ -6,14 +6,23 @@ matrix:
 
 # Python 3.4 can not be used with modern pytest
 
-    - python: "3.5"
+#    - python: "3.5"
+#      dist: bionic
 
-    - python: "3.6"
+#    - python: "3.6"
+#      dist: bionic
 
-    - dist: xenial
-      python: "3.7"
+#    - python: "3.7"
+#      dist: bionic
 
-    - python: "pypy3.5"
+#    - python: "3.8"
+#      dist: bionic
+
+    - python: "3.9"
+      dist: bionic
+
+#    - python: "pypy3.5"
+#      dist: bionic
 
 install:
   - pip install -r requirements.txt

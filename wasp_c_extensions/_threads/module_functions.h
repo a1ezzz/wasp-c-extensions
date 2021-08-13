@@ -43,12 +43,17 @@ static PyObject* awareness_wait(PyObject *self, PyObject *args, PyObject *kwargs
 		return NULL;
 	}
 
+	Py_INCREF(event);
+	PyObject_CallMethod(event, "clear", NULL);  // to prevent a race condition between 'sync_fn' and other functions
+	// that may "set" this event
+
 	fn_args = PyTuple_Pack(0);
 	fn_result = PyObject_Call(sync_fn, fn_args, NULL);
 	Py_DECREF(sync_fn);
 	Py_DECREF(fn_args);
 
 	if (fn_result == NULL) {
+	    Py_DECREF(event);
 		PyErr_SetString(PyExc_RuntimeError, "A 'sync_fn' call error!");
 		return NULL;
 	}
@@ -57,18 +62,16 @@ static PyObject* awareness_wait(PyObject *self, PyObject *args, PyObject *kwargs
 	Py_DECREF(fn_result);
 
 	if (is_true == -1) {
+	    Py_DECREF(event);
 		PyErr_SetString(PyExc_RuntimeError, "A 'sync_fn' comparision error!");
 		return NULL;
 	}
 
-	Py_INCREF(event);
 	if (is_true == 1) {
 		PyObject_CallMethod(event, "set", NULL);
 		Py_DECREF(event);
 		Py_RETURN_TRUE;
 	}
-
-	PyObject_CallMethod(event, "clear", NULL);
 
 	if (timeout != NULL && timeout != Py_None) {
 		Py_INCREF(timeout);

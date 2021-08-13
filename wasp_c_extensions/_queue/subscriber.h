@@ -24,13 +24,14 @@
 #include <Python.h>
 #include <stddef.h>
 
-#include "_common/common.h"
+#include "common.h"
 #include "mcqueue.h"
 
 extern PyTypeObject WMCQueueSubscriber_Type;
 
 typedef struct {
 	PyObject_HEAD
+	PyLongObject* __one;  // just cached '1'
 	PyObject* __queue;
 	PyLongObject* __msg_index;
 	PyObject* __weakreflist;

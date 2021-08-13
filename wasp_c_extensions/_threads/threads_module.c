@@ -20,25 +20,23 @@
 
 #include <Python.h>
 
-#include "_common/common.h"
+#include "module_common.h"
 #include "atomic.h"
-#include "event.h"
+#include "event_wrapper.h"
 #include "module_functions.h"
 
-static PyMethodDef threads_methods[] = {
+static PyMethodDef threads_functions[] = {
 
 	{
 		"awareness_wait", (PyCFunction) awareness_wait, METH_VARARGS | METH_KEYWORDS,
-		"Wait for the specified event to come. But before \"wait\" method will be called. An \"sync_fn\" "
-		"callback will be executed and if the result is True, then the event's \"set\" method is called "
-		"and then this function returns True, otherwise \"clear\" method is called and the event will "
-		"be awaited\n"
+		"Synchronize event's state and wait for this event to come. At first event is cleared and then if "
+		"a \"sync_fn\" function returns True event will be set. If not - event will be awaited\n"
 		"\n"
 		":param event: an event to synchronize with and to wait for\n"
 		":type event: Event | "__STR_PTHREAD_EVENT_NAME__"\n"
 		"\n"
 		":param sync_fn: a callable object that must return 'bool' object. This object may help to "
-		"synchronize the event with an external environment\n"
+		"synchronize the event\n"
 		":type sync_fn: callable\n"
 		"\n"
 		":param timeout: if defined then this is a time in seconds during which an event will be awaited "
@@ -63,47 +61,89 @@ static struct PyModuleDef threads_module = {
 		"\"awareness_wait\" function that may synchronize event with some external state"
 	,
 	.m_size = -1,
-	threads_methods
+	threads_functions
 };
 
-PyMODINIT_FUNC __PYINIT_THREADS_MAIN_FN__ (void) {
+static PyMethodDef Event_methods[] = {
+    {
+        "wait", (PyCFunction) wasp__threads__Event_wait, METH_VARARGS | METH_KEYWORDS,
+        "Wait for a event to come. If the event flag was set and is not cleared then this function returns\n"
+        "immediately. Returns True if event occurred and False otherwise\n"
+        "\n"
+        ":param timeout: time in seconds during which an event will be awaited (default is no timeout)\n"
+        ":return: bool"
+    },
 
-	__WASP_DEBUG_PRINTF__(
-		"Module \""__STR_PACKAGE_NAME__"."__STR_THREADS_MODULE_NAME__"\" initialization call"
-	);
+    {
+        "clear", (PyCFunction) wasp__threads__Event_clear, METH_NOARGS,
+        "Clear the event flag\n"
+        "\n"
+        ":return: None"
+	},
 
-	__py_int_add_fn__ = PyObject_GetAttrString((PyObject*) &PyLong_Type, "__add__");
-        if (__py_int_add_fn__ == NULL) {
-		return NULL;
-        }
+    {
+        "set", (PyCFunction) wasp__threads__Event_set, METH_NOARGS,
+        "Set the event flag\n"
+        "\n"
+        ":return: None"
+    },
 
-        __WASP_DEBUG_PRINTF__("Function \"__py_int_add_fn__\" was initialized");
+    {
+        "is_set", (PyCFunction) wasp__threads__Event_is_set, METH_NOARGS,
+        "Return the event flag state. True if this flag is set, False - otherwise\n"
+        "\n"
+        ":return: bool"
+    },
 
-	PyObject *m;
+    {NULL}
+};
 
-	if (PyType_Ready(&WAtomicCounter_Type) < 0){
-		return NULL;
-	}
-	__WASP_DEBUG_PRINTF__("Type \""__STR_ATOMIC_COUNTER_NAME__"\" was initialized");
+PyTypeObject WPThreadEvent_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = __STR_PACKAGE_NAME__"."__STR_MODULE_NAME__"."__STR_PTHREAD_EVENT_NAME__,  // TODO: think of a class renaming
+    .tp_doc = "threading.Event a-like object implemented with Linux pthread library (via c++)",
+    .tp_basicsize = sizeof(WPThreadEvent_Type),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
 
-	if (PyType_Ready(&WPThreadEvent_Type) < 0){
-		return NULL;
-	}
-	__WASP_DEBUG_PRINTF__("Type \""__STR_PTHREAD_EVENT_NAME__"\" was initialized");
+    .tp_new = wasp__threads__Event_new,
+    .tp_init = (initproc) wasp__threads__Event_init,
+    .tp_dealloc = (destructor) wasp__threads__Event_dealloc,
+    .tp_methods = Event_methods,
+    .tp_weaklistoffset = offsetof(Event_Object, __weakreflist)
+};
 
-	m = PyModule_Create(&threads_module);
+PyMODINIT_FUNC __PYINIT_MAIN_FN__ (void) {
+
+    __WASP_DEBUG__("Module is about to initialize");
+
+    __zero = (PyLongObject*) PyLong_FromLong(0);
+
+	PyObject* m = PyModule_Create(&threads_module);
 	if (m == NULL)
 		return NULL;
 
-	__WASP_DEBUG_PRINTF__("Module \""__STR_PACKAGE_NAME__"."__STR_THREADS_MODULE_NAME__"\" was created");
+    if (! add_type_to_module(m, &WPThreadEvent_Type, __STR_PTHREAD_EVENT_NAME__)){
+        return NULL;
+    }
 
-	Py_INCREF(&WAtomicCounter_Type);
-	PyModule_AddObject(m, __STR_ATOMIC_COUNTER_NAME__, (PyObject*) &WAtomicCounter_Type);
-        __WASP_DEBUG_PRINTF__("Type \""__STR_ATOMIC_COUNTER_NAME__"\" was linked");
+    if (PyType_Ready(&WAtomicCounter_Type) < 0){
+        return NULL;
+    }
+    __WASP_DEBUG__("Type \""__STR_ATOMIC_COUNTER_NAME__"\" was initialized");
 
-	Py_INCREF(&WPThreadEvent_Type);
-	PyModule_AddObject(m, __STR_PTHREAD_EVENT_NAME__, (PyObject*) &WPThreadEvent_Type);
-        __WASP_DEBUG_PRINTF__("Type \""__STR_PTHREAD_EVENT_NAME__"\" was linked");
+    PyModule_AddIntConstant(m, WASP_ATOMIC_LT_TEST_NAME, Py_LT);
+    PyModule_AddIntConstant(m, WASP_ATOMIC_LE_TEST_NAME, Py_LE);
+    PyModule_AddIntConstant(m, WASP_ATOMIC_EQ_TEST_NAME, Py_EQ);
+    PyModule_AddIntConstant(m, WASP_ATOMIC_NE_TEST_NAME, Py_NE);
+    PyModule_AddIntConstant(m, WASP_ATOMIC_GT_TEST_NAME, Py_GT);
+    PyModule_AddIntConstant(m, WASP_ATOMIC_GE_TEST_NAME, Py_GE);
 
-	return m;
+    Py_INCREF(&WAtomicCounter_Type);
+    PyModule_AddObject(m, __STR_ATOMIC_COUNTER_NAME__, (PyObject*) &WAtomicCounter_Type);
+    __WASP_DEBUG__("Type \""__STR_ATOMIC_COUNTER_NAME__"\" was linked");
+
+	__WASP_DEBUG__("Module was created");
+
+    return m;
 }

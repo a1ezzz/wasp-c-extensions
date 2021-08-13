@@ -1,6 +1,6 @@
-// wasp_c_extensions/_threads/event.h
+// wasp_c_extensions/static_functions.h
 //
-//Copyright (C) 2018 the wasp-c-extensions authors and contributors
+//Copyright (C) 2020 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
 //
 //This file is part of wasp-c-extensions.
@@ -18,26 +18,23 @@
 //You should have received a copy of the GNU Lesser General Public License
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef __WASP_C_EXTENSIONS__THREADS_EVENT_H__
-#define __WASP_C_EXTENSIONS__THREADS_EVENT_H__
+#ifndef __WASP_C_EXTENSIONS__STATIC_FUNCTIONS_H__
+#define __WASP_C_EXTENSIONS__STATIC_FUNCTIONS_H__
 
-#include <Python.h>
-#include <stddef.h>
-#include <stdbool.h>
-#include <time.h>
-#include <pthread.h>
+static inline int __long_rich_compare_bool(PyLongObject* o1, PyLongObject* o2, int op) {
+    PyObject* test_result = NULL;
+	int result = -1;
 
-#include "_common/common.h"
+    if (PyLong_Type.tp_richcompare != NULL){
+        test_result = PyLong_Type.tp_richcompare((PyObject*) o1, (PyObject*) o2, op);
+        result = PyObject_IsTrue(test_result);
+    }
+    else {
+        result = PyObject_RichCompareBool((PyObject*) o1, (PyObject*) o2, op);
+    }
 
-extern PyTypeObject WPThreadEvent_Type;
+    Py_XDECREF(test_result);
+    return result;
+}
 
-typedef struct {
-	PyObject_HEAD
-	bool __is_set;
-	double error_poll_timeout;
-	pthread_mutex_t __mutex;
-	pthread_cond_t  __conditional_variable;
-	PyObject *__weakreflist;
-} WPThreadEvent_Object;
-
-#endif // __WASP_C_EXTENSIONS__THREADS_EVENT_H__
+#endif // __WASP_C_EXTENSIONS__THREADS_ATOMIC_H__

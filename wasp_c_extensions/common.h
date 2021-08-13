@@ -1,4 +1,4 @@
-// wasp_c_extensions/_common/common.h
+// wasp_c_extensions/common.h
 //
 //Copyright (C) 2018 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
@@ -18,18 +18,32 @@
 //You should have received a copy of the GNU Lesser General Public License
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef __WASP_C_EXTENSIONS__COMMON_COMMON_H__
-#define __WASP_C_EXTENSIONS__COMMON_COMMON_H__
+#ifndef __WASP_C_EXTENSIONS__COMMON_H__
+#define __WASP_C_EXTENSIONS__COMMON_H__
 
 #define __STR_FN__(M) #M
 #define __STR_FN_CALL__(M) __STR_FN__(M)
 #define __STR_PACKAGE_NAME__ __STR_FN_CALL__(__PACKAGE_NAME__)
 
-#ifdef __WASP_DEBUG__
-#define __WASP_DEBUG_PRINTF__(msg,...) printf("At file: "__FILE__", at line: %i: "msg"\n", __LINE__, ##__VA_ARGS__)
+#ifdef __WASP_DEBUG_ENABLED__
+#define __WASP_DEBUG_PRINTF__(msg,...) printf( \
+    "[Module: " __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__ \
+    "][File: " __FILE__ \
+    "][Line: %i][Function: %s]:" msg \
+    "\n", __LINE__, __PRETTY_FUNCTION__, \
+    ##__VA_ARGS__);
+
+#define __WASP_DEBUG__(msg,...) printf( \
+    "[Module: " __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__ \
+    "][File: " __FILE__ \
+    "][Line: %i][Function: %s]:" msg \
+    "\n", __LINE__, __PRETTY_FUNCTION__, \
+    ##__VA_ARGS__);
+
 #else
 #define __WASP_DEBUG_PRINTF__(msg,...)
-#endif // __WASP_DEBUG__
+#define __WASP_DEBUG__(msg,...)
+#endif // __WASP_DEBUG_ENABLED__
 
 #define __WASP_DEBUG_FN_CALL__ __WASP_DEBUG_PRINTF__("Function call: %s", __PRETTY_FUNCTION__)
 
@@ -58,4 +72,7 @@
 #define __STR_MCQUEUE_NAME__ __STR_FN_CALL__(__MCQUEUE_NAME__)
 #define __STR_MCQUEUE_SUBSCRIBER_NAME__ __STR_FN_CALL__(__MCQUEUE_SUBSCRIBER_NAME__)
 
-#endif // __WASP_C_EXTENSIONS__COMMON_COMMON_H__
+#define __STR_MODULE_NAME__ __STR_FN_CALL__(__MODULE_NAME__)
+#define __PYINIT_MAIN_FN__ __PYINIT_MODULE_NAME_GEN_FN_CALL__(__MODULE_NAME__)
+
+#endif // __WASP_C_EXTENSIONS__COMMON_H__
