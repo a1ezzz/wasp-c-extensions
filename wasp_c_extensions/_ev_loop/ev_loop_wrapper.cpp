@@ -36,6 +36,7 @@ typedef EventLoop<PyObject> PyEventLoop;
 
 template<>
 void PyEventLoop::call(PyObject* callback){
+    Py_INCREF(callback);  // TODO: double check. There is a two INCREF for callback and one only DECREF
     Py_XDECREF(PyObject_CallObject(callback, NULL));  // new ref
     // TODO: throw something if there is an error!
     Py_DECREF(callback);
@@ -75,12 +76,12 @@ PyObject* wasp__ev_loop__EventLoop_new(PyTypeObject* type, PyObject* args, PyObj
 }
 
 int wasp__ev_loop__EventLoop_init(EventLoop_Object *self, PyObject *args, PyObject *kwargs){
-	static const char* kwlist[] = {"py_poll_timeout", NULL};
+	static const char* kwlist[] = {"py_poll_timeout", "immediate_stop", NULL};
 	PyObject *py_poll_timeout = NULL, *py_queue = NULL;
 	CMCQueue_Object* c_queue = NULL;
-	int c_poll_timeout = -1;
+	int c_poll_timeout = -1, immediate_stop_flag = 1;
 
-	if (! PyArg_ParseTupleAndKeywords(args, kwargs, "|O", (char**) kwlist, &py_poll_timeout)){
+	if (! PyArg_ParseTupleAndKeywords(args, kwargs, "|Op", (char**) kwlist, &py_poll_timeout, &immediate_stop_flag)){
 		return -1;
 	}
 
@@ -109,7 +110,8 @@ int wasp__ev_loop__EventLoop_init(EventLoop_Object *self, PyObject *args, PyObje
 
 	self->__event_loop = new PyEventLoop(
 	    static_cast<wasp::queue::ICMCQueue*>(c_queue->__queue),
-	    std::chrono::milliseconds(c_poll_timeout)
+	    std::chrono::milliseconds(c_poll_timeout),
+	    immediate_stop_flag
     );
 
 	__WASP_DEBUG__("Event object was initialized");
@@ -133,7 +135,7 @@ void wasp__ev_loop__EventLoop_dealloc(EventLoop_Object* self){
 
 PyObject* wasp__ev_loop__EventLoop_notify(EventLoop_Object* self, PyObject* args){
     PyObject* callback = NULL;
-    if (! PyArg_ParseTuple(args, "O", &callback)){  // // "O"-values do not increment ref. counter
+    if (! PyArg_ParseTuple(args, "O", &callback)){  // "O"-values do not increment ref. counter
         PyErr_SetString(PyExc_ValueError, "Callback parsing error");
         return NULL;
     }

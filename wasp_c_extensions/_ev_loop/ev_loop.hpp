@@ -28,6 +28,7 @@ namespace wasp::ev_loop {
 
 class EventLoopBase{
     std::atomic_flag is_running;
+    bool             immediate_stop;
 
     protected:
         wasp::queue::ICMCQueue* queue;  // TODO: multiple queues with different priorities!
@@ -35,7 +36,11 @@ class EventLoopBase{
         wasp::threads::Event trigger;
 
     public:
-        EventLoopBase(wasp::queue::ICMCQueue*, std::chrono::milliseconds t = std::chrono::milliseconds(-1));
+        EventLoopBase(
+            wasp::queue::ICMCQueue*,
+            std::chrono::milliseconds t = std::chrono::milliseconds(-1),
+            bool immediate_stop=true
+        );
         virtual ~EventLoopBase();
 
         virtual bool process_event() = 0;
@@ -67,8 +72,12 @@ class EventLoop:
 
     public:
 
-        EventLoop(wasp::queue::ICMCQueue* q, std::chrono::milliseconds t = std::chrono::milliseconds(-1)):
-            EventLoopBase(q, t)
+        EventLoop(
+            wasp::queue::ICMCQueue* q,
+            std::chrono::milliseconds t = std::chrono::milliseconds(-1),
+            bool immediate_stop=true
+        ):
+            EventLoopBase(q, t, immediate_stop)
         {};
 
         virtual ~EventLoop(){};
@@ -87,11 +96,13 @@ class EventLoop:
                 return false;
             }
 
-            this->call(
-                const_cast<T*>(
-                        static_cast<const T*>(next_event->payload)
-                    )
-            );
+            if (next_event->payload){
+                this->call(
+                    const_cast<T*>(
+                            static_cast<const T*>(next_event->payload)
+                        )
+                );
+            }
 
             this->last_event = next_event;
             return true;

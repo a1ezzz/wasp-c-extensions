@@ -64,7 +64,7 @@ PyObject* wasp__cmcqueue__CMCQueue_push(CMCQueue_Object* self, PyObject* args){
     __WASP_DEBUG__("Push payload to \"" __STR_CMCQUEUE_NAME__ "\" instance");;
 
     PyObject* msg = NULL;
-    if (! PyArg_ParseTuple(args, "O", &msg)){
+    if (! PyArg_ParseTuple(args, "O", &msg)){  // "O"-values do not increment ref. counter
         PyErr_SetString(PyExc_ValueError, "Message parsing error");
         return NULL;
     }

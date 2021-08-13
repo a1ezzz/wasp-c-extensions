@@ -22,7 +22,9 @@
 
 using namespace wasp::ev_loop;
 
-EventLoopBase::EventLoopBase(wasp::queue::ICMCQueue* q, std::chrono::milliseconds t):
+EventLoopBase::EventLoopBase(wasp::queue::ICMCQueue* q, std::chrono::milliseconds t, bool s):
+    is_running(false),
+    immediate_stop(s),
     queue(q),
     last_event(q->subscribe()),
     trigger(t)
@@ -48,6 +50,10 @@ void EventLoopBase::start_loop(){
         if (! this->process_event()){
             this->wait_event();
         }
+    }
+
+    if (! this->immediate_stop){
+        while (this->process_event());
     }
 
     this->is_running.clear(std::memory_order_seq_cst);

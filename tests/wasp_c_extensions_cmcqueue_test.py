@@ -81,7 +81,8 @@ class TestWCMCQueueConcurrency:
                 if item is not None:
                     self.result.append(item)
 
-    def test_concurrency(self):
+    @pytest.mark.parametrize('runs', range(5))
+    def test_concurrency(self, runs):
         subscribers = []
         queue = WCMCQueue()
 
