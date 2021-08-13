@@ -108,29 +108,29 @@ class TestWAtomicCounter:
 	def test_tas(self, test_op, start_value, compare_value, tas_result, counter_result):
 		counter = WAtomicCounter(start_value)
 		tas = counter.test_and_set(test_op, WAtomicCounter(compare_value))
-		assert((tas is None and tas_result is None) or tas == tas_result)
+		assert((tas is tas_result) or (tas == tas_result))
 		assert(int(counter) == counter_result)
 
-# 	@pytest.mark.parametrize("test_op", [LT_test, LE_test, EQ_test, NE_test, GT_test, GE_test])
-# 	def test_tas_exceptions(self, test_op):
-# 		pytest.raises(
-# 			ValueError,
-# 			WAtomicCounter(0, negative=False).test_and_set,
-# 			test_op,
-# 			WAtomicCounter(-1)
-# 		)
-#
-# 	def test_cas(self):
-# 		counter = WAtomicCounter(1)
-# 		assert(counter.compare_and_set(WAtomicCounter(5), WAtomicCounter(7)) is None)
-# 		assert(int(counter) == 1)
-#
-# 		assert(counter.compare_and_set(WAtomicCounter(1), WAtomicCounter(-7)) == 1)
-# 		assert(int(counter) == -7)
-# 		#
-# 		# counter = WAtomicCounter(3, negative=False)
-# 		# pytest.raises(ValueError, counter.compare_and_set, WAtomicCounter(3), WAtomicCounter(-5))
-# 		# assert(int(counter) == 3)
+	@pytest.mark.parametrize("test_op", [LT_test, LE_test, EQ_test, NE_test, GT_test, GE_test])
+	def test_tas_exceptions(self, test_op):
+		pytest.raises(
+			ValueError,
+			WAtomicCounter(0, negative=False).test_and_set,
+			test_op,
+			WAtomicCounter(-1)
+		)
+
+	def test_cas(self):
+		counter = WAtomicCounter(1)
+		assert(counter.compare_and_set(WAtomicCounter(5), WAtomicCounter(7)) is None)
+		assert(int(counter) == 1)
+
+		assert(counter.compare_and_set(WAtomicCounter(1), WAtomicCounter(-7)) == 1)
+		assert(int(counter) == -7)
+
+		counter = WAtomicCounter(3, negative=False)
+		pytest.raises(ValueError, counter.compare_and_set, WAtomicCounter(3), WAtomicCounter(-5))
+		assert(int(counter) == 3)
 
 
 class TestWPThreadEvent:
