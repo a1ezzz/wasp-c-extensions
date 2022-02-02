@@ -9,7 +9,7 @@ from wasp_c_extensions.cmcqueue import WCMCQueue, WCMCQueueItem
 
 class TestWCMCQueue:
 
-    def test(self):
+    def test_auto_ack(self):
         q = WCMCQueue()
         assert(q.messages() == 0)
 
@@ -50,6 +50,45 @@ class TestWCMCQueue:
         assert(q.messages() == 0)  # no live tokens anymore
         pytest.raises(RuntimeError, token1.unsubscribe)  # unable to unsubscribe twice
         pytest.raises(RuntimeError, token2.pull)  # unable to pull unsubscribed object
+
+    def test_manual_ack(self):
+        q = WCMCQueue(manual_acknowledge=True)
+        assert(q.messages() == 0)
+
+        q.push(1)
+        assert(q.messages() == 0)
+
+        token1 = q.subscribe()
+        assert(isinstance(token1, WCMCQueueItem) is True)
+        assert(q.messages() == 1)
+        assert(token1.pull() is None)
+        assert(q.messages() == 1)  # there are no changes in the queue, it has the last token event
+        assert(token1.acknowledge() is False)
+
+        q.push('2')
+        assert(q.messages() == 2)
+        assert(token1.pull() == '2')
+        assert(q.messages() == 2)  # 1->2
+        assert(token1.pull() == '2')  # None - > '2' it is there still
+
+        assert(token1.acknowledge() is True)
+        assert(q.messages() == 1)
+        assert(token1.pull() is None)
+        assert(q.messages() == 1)
+
+        token2 = q.subscribe()
+        assert(q.messages() == 2)
+
+        assert(token1.pull() is None)
+        assert(q.messages() == 2)  # ack is False because there is no user payload but internal message truncated
+        assert(token1.acknowledge() is False)
+        assert(q.messages() == 1)  # ack is False because there is no user payload but internal message truncated
+
+        q.push(3)
+        token1.unsubscribe()
+        token2.unsubscribe()
+        q.push(4)
+        assert(q.messages() == 0)
 
     def test_item(self):
         pytest.raises(RuntimeError, WCMCQueueItem)
