@@ -111,7 +111,7 @@ class CMCQueueItem:
 {
     public:
         const CMCItemType type;
-        std::atomic<size_t> reads;
+        std::atomic<size_t> reads;  // TODO: rename to acks
 
         CMCQueueItem(const void* p, const CMCItemType t):
             QueueItem(p),
@@ -131,6 +131,8 @@ class ICMCQueue{
         virtual bool has_next(const QueueItem*) = 0;
         virtual const QueueItem* subscribe() = 0;
         virtual void unsubscribe(const QueueItem*) = 0;
+        virtual const bool manual_acknowledge() = 0;
+        virtual const QueueItem* acknowledge(const QueueItem*) = 0;
 
         virtual size_t messages() = 0;
 };
@@ -145,22 +147,26 @@ class CMCBaseQueue:
     std::atomic<size_t> newest_subscribes;  // counter for push optimization
     std::atomic<size_t> __messages;  // approximate message counter
     std::atomic_flag is_cleaning;
+    const bool manual_ack;
 
     CMCQueueItem* cast_item(const QueueItem*);
     CMCQueueItem* push_(const void* payload, CMCItemType t=MSG_USERS_PAYLOAD);
-    CMCQueueItem* pull_(const QueueItem*);
+    CMCQueueItem* pull_(const QueueItem*, bool ack);
     void cleanup();
 
     protected:
         virtual CMCQueueItem* queue_item(const void* payload, CMCItemType type) = 0;
 
     public:
-        CMCBaseQueue(IQueueBuffer* buffer);
+        CMCBaseQueue(IQueueBuffer* buffer, const bool manual_acknowledge=false);
         virtual ~CMCBaseQueue();
 
         const QueueItem* push(const void* payload); // TODO: add note that NULL as payload is prohibbited
         const QueueItem* pull(const QueueItem*);
         bool has_next(const QueueItem*);
+
+        const bool manual_acknowledge(){return this->manual_ack;};
+        const QueueItem* acknowledge(const QueueItem*);
 
         const QueueItem* subscribe();
         void unsubscribe(const QueueItem*);
@@ -204,9 +210,9 @@ template<typename T, void (*F)(QueueItem*) = dummy_item_cleanup_function> class 
         }
 
     public:
-        CMCQueue():
+        CMCQueue(const bool manual_acknowledge=false):
             T(),
-            CMCBaseQueue(this)
+            CMCBaseQueue(this, manual_acknowledge)
         {};
         virtual ~CMCQueue(){};
 };
