@@ -41,6 +41,7 @@ typedef struct {
 } CMCQueueItem_Object;
 
 PyObject* wasp__cmcqueue__CMCQueue_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
+int wasp__cmcqueue__CMCQueue_init(CMCQueue_Object *self, PyObject *args, PyObject *kwargs);
 void wasp__cmcqueue__CMCQueue_dealloc(CMCQueue_Object* self);
 
 PyObject* wasp__cmcqueue__CMCQueue_push(CMCQueue_Object* self, PyObject* args);
@@ -55,6 +56,7 @@ void wasp__cmcqueue__CMCQueueItem_dealloc(CMCQueueItem_Object* self);
 
 PyObject* wasp__cmcqueue__CMCQueueItem_unsubscribe(CMCQueueItem_Object* self, PyObject* args);
 PyObject* wasp__cmcqueue__CMCQueueItem_pull(CMCQueueItem_Object* self, PyObject* args);
+PyObject* wasp__cmcqueue__CMCQueueItem_acknowledge(CMCQueueItem_Object* self, PyObject* args);
 PyObject* wasp__cmcqueue__CMCQueueItem_has_next(CMCQueueItem_Object* self, PyObject* args);
 
 #endif // __WASP_C_EXTENSIONS__CMCQUEUE_CMCQUEUE_WRAPPER_H__

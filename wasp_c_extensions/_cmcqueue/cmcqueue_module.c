@@ -54,6 +54,10 @@ static PyMethodDef CMCQueueItem_methods[] = {
 		"\"Pull\" description.\n"
 	},
 
+	{
+		"acknowledge", (PyCFunction) wasp__cmcqueue__CMCQueueItem_acknowledge, METH_NOARGS,
+		"\"Acknowledge\" description.\n"
+	},
 
 	{
 		"has_next", (PyCFunction) wasp__cmcqueue__CMCQueueItem_has_next, METH_NOARGS,
@@ -73,6 +77,7 @@ static PyTypeObject CMCQueue_Type = {
 
 	.tp_weaklistoffset = offsetof(CMCQueue_Object, __weakreflist),
 	.tp_new = wasp__cmcqueue__CMCQueue_new,
+	.tp_init = (initproc) wasp__cmcqueue__CMCQueue_init,
 	.tp_dealloc = (destructor) wasp__cmcqueue__CMCQueue_dealloc,
 	.tp_methods = CMCQueue_methods,
 };
