@@ -93,6 +93,62 @@ class TestWCMCQueue:
     def test_item(self):
         pytest.raises(RuntimeError, WCMCQueueItem)
 
+    def test_next(self):
+        q = WCMCQueue()
+        token1 = q.subscribe()
+        pytest.raises(TypeError, next, token1)
+
+        q = WCMCQueue(manual_acknowledge=True)
+        token1 = q.subscribe()
+        pytest.raises(StopIteration, next, token1)  # no elements to iterate
+
+        q.push(1)
+        q.push(2)
+        q.push(3)
+
+        assert(next(token1) == 1)
+        assert(next(token1) == 2)
+        assert(next(token1) == 3)
+        pytest.raises(StopIteration, next, token1)  # no elements to iterate
+
+        q.push(4)
+        q.push(5)
+
+        assert(next(token1) == 1)
+        assert(next(token1) == 2)
+        assert(next(token1) == 3)
+
+        token1.acknowledge()  # acknowledge resets iteration
+        assert(next(token1) == 2)
+        assert(next(token1) == 3)
+        assert(next(token1) == 4)
+        assert(next(token1) == 5)
+        pytest.raises(StopIteration, next, token1)  # no elements to iterate
+
+        assert(next(token1) == 2)
+        assert(next(token1) == 3)
+        assert(next(token1) == 4)
+        token1.unsubscribe()
+        pytest.raises(RuntimeError, next, token1)  # unable to iterate unsubscribed tokens
+
+    def test_iter(self):
+        q = WCMCQueue()
+        token1 = q.subscribe()
+        pytest.raises(TypeError, iter, token1)
+
+        q = WCMCQueue(manual_acknowledge=True)
+        token1 = q.subscribe()
+        iter(token1)  # it is ok
+        assert([] == [x for x in iter(token1)])
+        assert([] == [x for x in token1])
+
+        q.push(1)
+        q.push(2)
+        q.push(3)
+
+        token1.acknowledge()
+        assert([2, 3] == [x for x in token1])
+
 
 class TestWCMCQueueConcurrency:
     __test_running__ = False
