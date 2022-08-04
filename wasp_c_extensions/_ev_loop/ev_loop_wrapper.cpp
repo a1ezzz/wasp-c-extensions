@@ -38,7 +38,11 @@ template<>
 void PyEventLoop::call(PyObject* callback){
     Py_INCREF(callback);  // TODO: double check. There is a two INCREF for callback and one only DECREF
     Py_XDECREF(PyObject_CallObject(callback, NULL));  // new ref
-    // TODO: throw something if there is an error!
+
+    if (PyErr_Occurred() != NULL) {
+        this->stop_loop();
+    }
+
     Py_DECREF(callback);
 }
 
@@ -70,6 +74,7 @@ PyObject* wasp__ev_loop__EventLoop_new(PyTypeObject* type, PyObject* args, PyObj
 
     self->__py_queue = NULL;
     self->__event_loop = NULL;
+    self->__is_started = 0;
 
     __WASP_DEBUG__("EventLoop object was allocated");
     return (PyObject *) self;
@@ -153,11 +158,27 @@ PyObject* wasp__ev_loop__EventLoop_process_event(EventLoop_Object* self, PyObjec
 }
 
 PyObject* wasp__ev_loop__EventLoop_start_loop(EventLoop_Object* self, PyObject* args){
+    self->__is_started = 1;
+
     (static_cast<PyEventLoop*>(self->__event_loop))->start_loop();
-	Py_RETURN_NONE;
+
+    self->__is_started = 0;
+
+    if (PyErr_Occurred() == NULL) {
+        Py_RETURN_NONE;
+    }
+
+    return NULL;
 }
 
 PyObject* wasp__ev_loop__EventLoop_stop_loop(EventLoop_Object* self, PyObject* args){
     (static_cast<PyEventLoop*>(self->__event_loop))->stop_loop();
 	Py_RETURN_NONE;
+}
+
+PyObject* wasp__ev_loop__EventLoop_is_started(EventLoop_Object* self, PyObject* args){
+    if (self->__is_started){
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
 }

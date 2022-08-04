@@ -1,13 +1,10 @@
 
-from time import sleep
 from random import random
 from threading import Thread
 
 import pytest
 
-from wasp_c_extensions.threads import WPThreadEvent
 from wasp_c_extensions.ev_loop import WEventLoop
-# from wasp_c_extensions.cmcqueue import WCMCQueue, WCMCQueueItem
 
 
 class TestEventLoopConcurrency:
@@ -22,6 +19,15 @@ class TestEventLoopConcurrency:
 		thread.start()
 		loop.stop_loop()
 		thread.join()
+
+	def test_exception(self):
+		def callback():
+			raise ValueError('!')
+
+		loop = WEventLoop(immediate_stop=False)
+		loop.notify(callback)
+
+		pytest.raises(ValueError, loop.start_loop)
 
 	@pytest.mark.parametrize('runs', range(5))
 	def test_concurrency(self, runs):
@@ -53,4 +59,4 @@ class TestEventLoopConcurrency:
 		loop_thread.join()
 
 		target_result = sum(TestEventLoopConcurrency.__input_sequence__) * TestEventLoopConcurrency.__threads_count__
-		assert(sum(result) == (target_result))
+		assert(sum(result) == target_result)
