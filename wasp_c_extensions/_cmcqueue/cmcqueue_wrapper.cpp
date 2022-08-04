@@ -41,10 +41,28 @@ PyObject* wasp__cmcqueue__CMCQueue_new(PyTypeObject* type, PyObject* args, PyObj
     if (self == NULL) {
         return PyErr_NoMemory();
     }
-    self->__queue = dynamic_cast<ICMCQueue*>(new CMCQueue<wasp::queue::StretchedBuffer, cmcqueue_item_cleanup>());
+    self->__queue = NULL;
 
     __WASP_DEBUG__("Object \""  __STR_CMCQUEUE_NAME__ "\" was allocated");
     return (PyObject *) self;
+}
+
+int wasp__cmcqueue__CMCQueue_init(CMCQueue_Object *self, PyObject *args, PyObject *kwargs){
+    __WASP_DEBUG__("CMCQueue initialization");
+	static const char* kwlist[] = {"manual_acknowledge", NULL};
+	int manual_ack = 0;
+
+	if (! PyArg_ParseTupleAndKeywords(args, kwargs, "|p", (char**) kwlist, &manual_ack)){
+		return -1;
+	}
+
+    self->__queue = dynamic_cast<ICMCQueue*>(
+        new CMCQueue<wasp::queue::StretchedBuffer, cmcqueue_item_cleanup>(manual_ack)
+    );
+
+	__WASP_DEBUG__("CMCQueue object was initialized");
+
+	return 0;
 }
 
 void wasp__cmcqueue__CMCQueue_dealloc(CMCQueue_Object* self){
@@ -54,7 +72,11 @@ void wasp__cmcqueue__CMCQueue_dealloc(CMCQueue_Object* self){
         PyObject_ClearWeakRefs((PyObject *) self);
     }
 
-    delete (static_cast<ICMCQueue*>(self->__queue));
+    if (self->__queue != NULL){
+        delete (static_cast<ICMCQueue*>(self->__queue));
+        self->__queue = NULL;
+    }
+
     Py_TYPE(self)->tp_free((PyObject *) self);
 
     __WASP_DEBUG__("Object was deallocated");
@@ -108,6 +130,7 @@ PyObject* wasp__cmcqueue__CMCQueueItem_new(PyTypeObject* type, PyObject* args, P
     }
     self->__py_queue = NULL;
     self->__last_item = NULL;
+    self->__next_iterator = NULL;
 
     __WASP_DEBUG__("Object \""  __STR_CMCQUEUE_ITEM_NAME__ "\" was allocated");
     return (PyObject *) self;
@@ -160,6 +183,36 @@ PyObject* wasp__cmcqueue__CMCQueueItem_unsubscribe(CMCQueueItem_Object* self, Py
     return NULL;
 }
 
+PyObject* wasp__cmcqueue__CMCQueueItem_acknowledge(CMCQueueItem_Object* self, PyObject* args){
+    CMCQueue_Object* py_queue = (CMCQueue_Object*) self->__py_queue;
+    const QueueItem *last_item = (const QueueItem*) self->__last_item, *next_item = NULL;
+
+    if ((! py_queue) || (! last_item)){
+        PyErr_SetString(PyExc_RuntimeError, "Unable to 'ack' unsubscribed object");
+        return NULL;
+    }
+
+    if (! static_cast<ICMCQueue*>(py_queue->__queue)->manual_acknowledge()){
+        // TODO: raise something
+        Py_RETURN_FALSE;
+    }
+
+    self->__next_iterator = NULL;  // next iteration must be reset since it may have invalid pointer
+
+    next_item = static_cast<ICMCQueue*>(py_queue->__queue)->acknowledge(last_item);
+    if (next_item == last_item){
+        Py_RETURN_FALSE;
+    }
+
+    self->__last_item = next_item;
+
+    if(! next_item->payload){ // the pointer switch
+        Py_RETURN_FALSE;
+    }
+
+    Py_RETURN_TRUE;
+}
+
 PyObject* wasp__cmcqueue__CMCQueueItem_pull(CMCQueueItem_Object* self, PyObject* args){
     CMCQueue_Object* py_queue = (CMCQueue_Object*) self->__py_queue;
     const QueueItem *last_item = (const QueueItem*) self->__last_item, *next_item = NULL;
@@ -174,7 +227,9 @@ PyObject* wasp__cmcqueue__CMCQueueItem_pull(CMCQueueItem_Object* self, PyObject*
         Py_RETURN_NONE;  // TODO: or raise something
     }
 
-    self->__last_item = next_item;
+    if (! static_cast<ICMCQueue*>(py_queue->__queue)->manual_acknowledge()){
+        self->__last_item = next_item;  // TODO: do not reset for manual ack!
+    }
 
     if (next_item){
         if (next_item->payload){  // not the pointer switch
@@ -200,4 +255,51 @@ PyObject* wasp__cmcqueue__CMCQueueItem_has_next(CMCQueueItem_Object* self, PyObj
     }
 
     Py_RETURN_FALSE;
+}
+
+PyObject* wasp__cmcqueue__CMCQueueItem___next__(CMCQueueItem_Object* self){
+    CMCQueue_Object* py_queue = (CMCQueue_Object*) self->__py_queue;
+    const QueueItem *last_item = NULL, *next_item = NULL;
+
+    if ((! py_queue) || (! self->__last_item)){
+        PyErr_SetString(PyExc_RuntimeError, "Unable to iterate unsubscribed object");
+        return NULL;
+    }
+
+    if (! static_cast<ICMCQueue*>(py_queue->__queue)->manual_acknowledge()){
+        PyErr_SetString(PyExc_TypeError, "Unable to iterate with auto-acknowledged queue");
+        return NULL;
+    }
+
+    last_item = (self->__next_iterator) ?
+        (const QueueItem*) self->__next_iterator :
+        (const QueueItem*) self->__last_item;
+
+    next_item = static_cast<ICMCQueue*>(py_queue->__queue)->pull(last_item);
+
+    if (next_item && next_item != last_item && next_item->payload){  // not the pointer switch
+        self->__next_iterator = next_item;
+        Py_INCREF(next_item->payload);  // TODO: double check -- payload is 'increfed' already
+        return (PyObject*) next_item->payload;
+    }
+
+    self->__next_iterator = NULL;
+    return NULL;
+}
+
+PyObject* wasp__cmcqueue__CMCQueueItem___iter__(CMCQueueItem_Object* self){
+    CMCQueue_Object* py_queue = (CMCQueue_Object*) self->__py_queue;
+
+    if ((! py_queue) || (! self->__last_item)){
+        PyErr_SetString(PyExc_RuntimeError, "Unable to iterate unsubscribed object");
+        return NULL;
+    }
+
+    if (! static_cast<ICMCQueue*>(py_queue->__queue)->manual_acknowledge()){
+        PyErr_SetString(PyExc_TypeError, "Unable to iterate with auto-acknowledged queue");
+        return NULL;
+    }
+
+    Py_INCREF(self);
+    return (PyObject*) self;
 }

@@ -46,18 +46,22 @@ static PyMethodDef CMCQueueItem_methods[] = {
 
 	{
 		"unsubscribe", (PyCFunction) wasp__cmcqueue__CMCQueueItem_unsubscribe, METH_NOARGS,
-		"\"UnSubscribe\" description.\n"
+		"\"UnSubscribe\" description.\n"  // TODO add description
 	},
 
 	{
 		"pull", (PyCFunction) wasp__cmcqueue__CMCQueueItem_pull, METH_NOARGS,
-		"\"Pull\" description.\n"
+		"\"Pull\" description.\n"  // TODO add description
 	},
 
+	{
+		"acknowledge", (PyCFunction) wasp__cmcqueue__CMCQueueItem_acknowledge, METH_NOARGS,
+		"\"Acknowledge\" description.\n"  // TODO add description
+	},
 
 	{
 		"has_next", (PyCFunction) wasp__cmcqueue__CMCQueueItem_has_next, METH_NOARGS,
-		"\"Has next\" description.\n"
+		"\"Has next\" description.\n"  // TODO add description
 	},
 
 	{NULL}
@@ -73,6 +77,7 @@ static PyTypeObject CMCQueue_Type = {
 
 	.tp_weaklistoffset = offsetof(CMCQueue_Object, __weakreflist),
 	.tp_new = wasp__cmcqueue__CMCQueue_new,
+	.tp_init = (initproc) wasp__cmcqueue__CMCQueue_init,
 	.tp_dealloc = (destructor) wasp__cmcqueue__CMCQueue_dealloc,
 	.tp_methods = CMCQueue_methods,
 };
@@ -88,6 +93,8 @@ static PyTypeObject CMCQueueItem_Type = {
 	.tp_new = wasp__cmcqueue__CMCQueueItem_new,
 	.tp_init = (initproc) wasp__cmcqueue__CMCQueueItem_init,
 	.tp_dealloc = (destructor) wasp__cmcqueue__CMCQueueItem_dealloc,
+	.tp_iternext = (iternextfunc) wasp__cmcqueue__CMCQueueItem___next__,
+	.tp_iter = (getiterfunc) wasp__cmcqueue__CMCQueueItem___iter__,
 	.tp_methods = CMCQueueItem_methods,
 };
 

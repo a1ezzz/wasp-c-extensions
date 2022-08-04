@@ -109,12 +109,13 @@ const QueueItem* StretchedBuffer::reduce(){
 
 // class CMCBaseQueue
 
-CMCBaseQueue::CMCBaseQueue(IQueueBuffer* b):
+CMCBaseQueue::CMCBaseQueue(IQueueBuffer* b, bool manual_acknowledge):
     buffer(b),
     oldest_subscribes(0),
     newest_subscribes(0),
     __messages(0),
-    is_cleaning(false)
+    is_cleaning(false),
+    manual_ack(manual_acknowledge)
 {}
 
 CMCBaseQueue::~CMCBaseQueue()
@@ -154,14 +155,12 @@ CMCQueueItem* CMCBaseQueue::push_(const void* payload, CMCItemType type){
     return item_ptr;
 }
 
-CMCQueueItem* CMCBaseQueue::pull_(const QueueItem* last_item)
-{
+CMCQueueItem* CMCBaseQueue::pull_(const QueueItem* last_item, bool ack){
     CMCQueueItem* prev_item_ptr = this->cast_item(last_item);
     const QueueItem* next_item_ptr = this->buffer->next(last_item);
 
-    if (next_item_ptr){
+    if (ack && next_item_ptr){
         prev_item_ptr->reads.fetch_add(1, std::memory_order_seq_cst);
-        this->cleanup();
     }
     return this->cast_item(next_item_ptr);
 };
@@ -269,13 +268,36 @@ void CMCBaseQueue::cleanup(){
 
 const QueueItem* CMCBaseQueue::pull(const QueueItem* last_item)
 {
-    CMCQueueItem* next_item = this->pull_(last_item);
+    CMCQueueItem* next_item = this->pull_(last_item, ! this->manual_ack);
     while (next_item && next_item->type != MSG_USERS_PAYLOAD){
         last_item = next_item;
-        next_item = this->pull_(last_item);
+        next_item = this->pull_(last_item, ! this->manual_ack);
     }
 
+     if (! this->manual_ack){
+        this->cleanup();
+     }
+
     return next_item ? next_item : last_item;
+}
+
+const QueueItem* CMCBaseQueue::acknowledge(const QueueItem* last_item){
+    __WASP_DEBUG__("Acknowledge request")
+
+    CMCQueueItem* next_item = NULL;
+
+    if (this->manual_ack){
+        next_item = this->pull_(last_item, true);
+        while (next_item && next_item->type != MSG_USERS_PAYLOAD){
+            last_item = next_item;
+            next_item = this->pull_(last_item, true);
+        }
+
+        this->cleanup();
+
+        return next_item ? next_item : last_item;
+    } // if (this->manual_ack)
+    return last_item;
 }
 
 bool CMCBaseQueue::has_next(const QueueItem* item){

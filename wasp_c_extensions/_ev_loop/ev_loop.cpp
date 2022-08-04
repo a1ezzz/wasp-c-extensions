@@ -48,7 +48,7 @@ void EventLoopBase::start_loop(){
 
     while(this->is_running.test_and_set(std::memory_order_seq_cst)){
         if (! this->process_event()){
-            this->wait_event();
+            this->wait_event();  // TODO: add a timeout for the waiting and add PyErr_CheckSignals
         }
     }
 
