@@ -6,19 +6,27 @@ pipeline {
 
   stages {
     stage('Prepare'){
-      sh 'echo 1'
+      steps {
+        sh 'echo 1'
+      }
     }
 
     stage('Install'){
-      sh 'echo 2'
+      steps {
+        sh 'echo 2'
+      }
     }
 
     stage('Test'){
-      sh 'echo 3'
+      steps {
+        sh 'echo 3'
+      }
     }
 
     stage('Clean up'){
-      sh 'echo 4'
+      steps {
+        sh 'echo 4'
+      }
     }
   }
 }
