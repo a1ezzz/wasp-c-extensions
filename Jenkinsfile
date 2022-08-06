@@ -1,13 +1,20 @@
 #!/usr/bin/env groovy
 
 
-def python_image = 'python:3.9'
+def python_image = "python:${params.python_version}"
 def python_container_cmd = '-u root -v ${WORKSPACE}@tmp:/workspace -v ${WORKSPACE}:/sources'
 
 
 pipeline {
 
   agent any
+
+  parameters {
+    string(
+      name: 'python_version',
+      defaultValue: '3.9'
+    )
+  }
 
   stages {
     stage('Prepare'){
