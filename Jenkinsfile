@@ -66,28 +66,28 @@ pipeline {
 
     fixed { 
       script {
-        message = "☘ The job <b>'${env.JOB_NAME}'</b> fixed: branch '${env.GIT_BRANCH}', build number ${env.BUILD_NUMBER}. Details: ${env.BUILD_URL}"
+        message = "☘ The job <b>'${env.JOB_NAME}'</b> fixed. Details: ${env.BUILD_URL}"
         telegram_notification(message)
       }
     }
         
     aborted {
       script {        
-        message = "🧯 The job <b>'${env.JOB_NAME}'</b> aborted: branch '${env.GIT_BRANCH}', build number ${env.BUILD_NUMBER}. Details: ${env.BUILD_URL}"
+        message = "🧯 The job <b>'${env.JOB_NAME}'</b> aborted. Details: ${env.BUILD_URL}"
         telegram_notification(message)
       }
     }
     
     failure {
       script {
-        message = "🧯 The job <b>'${env.JOB_NAME}'</b> failed: branch '${env.GIT_BRANCH}', build number ${env.BUILD_NUMBER}. Details: ${env.BUILD_URL}"
+        message = "🧯 The job <b>'${env.JOB_NAME}'</b> failed. Details: ${env.BUILD_URL}"
         telegram_notification(message)
       }
     }
     
     success {
       script {
-        message = "☘ The job <b>'${env.JOB_NAME}'</b> completed successfully: branch '${env.GIT_BRANCH}', build number ${env.BUILD_NUMBER}. Details: ${env.BUILD_URL}"
+        message = "☘ The job <b>'${env.JOB_NAME}'</b> completed successfully. Details: ${env.BUILD_URL}"
         telegram_notification(message) 
       }
     }    
