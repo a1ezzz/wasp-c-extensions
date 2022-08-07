@@ -5,7 +5,17 @@ def python_version = params.getOrDefault("python_version", "3.9")
 def python_image = "python:${python_version}"
 def python_container_cmd = '-u root -v ${WORKSPACE}@tmp:/workspace -v ${WORKSPACE}:/sources'
 
-def telegram_url = "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage"
+
+def telegram_notification(message) {
+  withCredentials([
+    string(credentialsId: 'telegramBotToken', variable: 'BOT_TOKEN'),
+    string(credentialsId: 'telegramChatId', variable: 'CHAT_ID')
+  ]) {
+    def telegram_url = "https://api.telegram.org/bot$BOT_TOKEN/sendMessage"
+
+    sh "curl -X POST ${telegram_url} -d chat_id=$CHAT_ID -d parse_mode=HTML -d text='${message}'"
+  }
+}
 
 
 pipeline {
@@ -56,62 +66,30 @@ pipeline {
 
     fixed { 
       script {
-      withCredentials([
-        string(credentialsId: 'telegramBotToken', variable: 'BOT_TOKEN'),
-        string(credentialsId: 'telegramChatId', variable: 'CHAT_ID')
-      ]) {
-        
-        message = "The job <b>'${env.JOB_NAME}'</b> fixed: branch '${env.GIT_BRANCH}', build number ${env.BUILD_NUMBER}. Details: ${env.BUILD_URL}"
-        
-        sh """
-          curl -X POST ${telegram_url} -d chat_id=${CHAT_ID} -d parse_mode=HTML -d text='${message}'
-        """
-      }}
+        message = "☘ The job <b>'${env.JOB_NAME}'</b> fixed: branch '${env.GIT_BRANCH}', build number ${env.BUILD_NUMBER}. Details: ${env.BUILD_URL}"
+        telegram_notification(message)
+      }
     }
         
     aborted {
-      script {
-      withCredentials([
-        string(credentialsId: 'telegramBotToken', variable: 'BOT_TOKEN'),
-        string(credentialsId: 'telegramChatId', variable: 'CHAT_ID')
-      ]) {
-        
-        message = "The job <b>'${env.JOB_NAME}'</b> aborted: branch '${env.GIT_BRANCH}', build number ${env.BUILD_NUMBER}. Details: ${env.BUILD_URL}"
-        
-        sh """
-          curl -X POST ${telegram_url} -d chat_id=${CHAT_ID} -d parse_mode=HTML -d text='${message}'
-        """
-      }} 
+      script {        
+        message = "🧯 The job <b>'${env.JOB_NAME}'</b> aborted: branch '${env.GIT_BRANCH}', build number ${env.BUILD_NUMBER}. Details: ${env.BUILD_URL}"
+        telegram_notification(message)
+      }
     }
     
     failure {
       script {
-      withCredentials([
-        string(credentialsId: 'telegramBotToken', variable: 'BOT_TOKEN'),
-        string(credentialsId: 'telegramChatId', variable: 'CHAT_ID')
-      ]) {
-        
-        message = "The job <b>'${env.JOB_NAME}'</b> failed: branch '${env.GIT_BRANCH}', build number ${env.BUILD_NUMBER}. Details: ${env.BUILD_URL}"
-        
-        sh """
-          curl -X POST ${telegram_url} -d chat_id=${CHAT_ID} -d parse_mode=HTML -d text='${message}'
-        """
-      }} 
+        message = "🧯 The job <b>'${env.JOB_NAME}'</b> failed: branch '${env.GIT_BRANCH}', build number ${env.BUILD_NUMBER}. Details: ${env.BUILD_URL}"
+        telegram_notification(message)
+      }
     }
     
     success {
       script {
-      withCredentials([
-        string(credentialsId: 'telegramBotToken', variable: 'BOT_TOKEN'),
-        string(credentialsId: 'telegramChatId', variable: 'CHAT_ID')
-      ]) {
-        
-        message = "The job <b>'${env.JOB_NAME}'</b> completed successfully: branch '${env.GIT_BRANCH}', build number ${env.BUILD_NUMBER}. Details: ${env.BUILD_URL}"
-        
-        sh """
-          curl -X POST ${telegram_url} -d chat_id=${CHAT_ID} -d parse_mode=HTML -d text='${message}'
-        """
-      }}
+        message = "☘ The job <b>'${env.JOB_NAME}'</b> completed successfully: branch '${env.GIT_BRANCH}', build number ${env.BUILD_NUMBER}. Details: ${env.BUILD_URL}"
+        telegram_notification(message) 
+      }
     }    
         
   }
