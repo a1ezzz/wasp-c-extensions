@@ -55,6 +55,7 @@ pipeline {
   post {
 
     fixed { 
+      script {
       withCredentials([
         string(credentialsId: 'telegramBotToken', variable: 'BOT_TOKEN'),
         string(credentialsId: 'telegramChatId', variable: 'CHAT_ID')
@@ -65,10 +66,11 @@ pipeline {
         sh """
           curl -X POST ${telegram_url} -d chat_id=${CHAT_ID} -d parse_mode=HTML -d text='${message}'
         """
-      }
+      }}
     }
         
     aborted {
+      script {
       withCredentials([
         string(credentialsId: 'telegramBotToken', variable: 'BOT_TOKEN'),
         string(credentialsId: 'telegramChatId', variable: 'CHAT_ID')
@@ -79,10 +81,11 @@ pipeline {
         sh """
           curl -X POST ${telegram_url} -d chat_id=${CHAT_ID} -d parse_mode=HTML -d text='${message}'
         """
-      }        
+      }} 
     }
     
     failure {
+      script {
       withCredentials([
         string(credentialsId: 'telegramBotToken', variable: 'BOT_TOKEN'),
         string(credentialsId: 'telegramChatId', variable: 'CHAT_ID')
@@ -93,10 +96,11 @@ pipeline {
         sh """
           curl -X POST ${telegram_url} -d chat_id=${CHAT_ID} -d parse_mode=HTML -d text='${message}'
         """
-      }        
+      }} 
     }
     
     success {
+      script {
       withCredentials([
         string(credentialsId: 'telegramBotToken', variable: 'BOT_TOKEN'),
         string(credentialsId: 'telegramChatId', variable: 'CHAT_ID')
@@ -107,7 +111,7 @@ pipeline {
         sh """
           curl -X POST ${telegram_url} -d chat_id=${CHAT_ID} -d parse_mode=HTML -d text='${message}'
         """
-      }
+      }}
     }    
         
   }
