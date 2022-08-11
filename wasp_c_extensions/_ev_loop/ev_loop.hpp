@@ -28,7 +28,7 @@ namespace wasp::ev_loop {
 
 class EventLoopBase{
     std::atomic_flag is_running;
-    bool             immediate_stop;
+    const bool       __immediate_stop;
 
     protected:
         wasp::queue::ICMCQueue* queue;  // TODO: multiple queues with different priorities!
@@ -42,6 +42,10 @@ class EventLoopBase{
             bool immediate_stop=true
         );
         virtual ~EventLoopBase();
+
+	inline const bool immediate_stop() const{
+	    return this->__immediate_stop;
+	};
 
         virtual bool process_event() = 0;
         virtual void wait_event();

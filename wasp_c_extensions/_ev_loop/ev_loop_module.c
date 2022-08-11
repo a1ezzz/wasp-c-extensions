@@ -53,6 +53,11 @@ static PyMethodDef EventLoop_methods[] = {
         "\"Function\" description.\n"
     },
 
+    {
+        "immediate_stop", (PyCFunction) wasp__ev_loop__EventLoop_immediate_stop, METH_NOARGS,
+        "\"Function\" description.\n"
+    },
+
     {NULL}
 };
 

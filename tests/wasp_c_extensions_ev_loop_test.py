@@ -15,6 +15,7 @@ class TestEventLoopConcurrency:
 
 	def test(self):
 		loop = WEventLoop()
+		assert(loop.immediate_stop() is True)
 		thread = Thread(target=loop.start_loop)
 		thread.start()
 		loop.stop_loop()
@@ -25,6 +26,7 @@ class TestEventLoopConcurrency:
 			raise ValueError('!')
 
 		loop = WEventLoop(immediate_stop=False)
+		assert(loop.immediate_stop() is False)
 		loop.notify(callback)
 
 		pytest.raises(ValueError, loop.start_loop)
@@ -32,6 +34,7 @@ class TestEventLoopConcurrency:
 	@pytest.mark.parametrize('runs', range(5))
 	def test_concurrency(self, runs):
 		loop = WEventLoop(immediate_stop=False)
+		assert(loop.immediate_stop() is False)
 		loop_thread = Thread(target=loop.start_loop)
 		loop_thread.start()
 

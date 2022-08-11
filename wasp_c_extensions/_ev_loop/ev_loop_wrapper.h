@@ -46,5 +46,6 @@ PyObject* wasp__ev_loop__EventLoop_process_event(EventLoop_Object* self, PyObjec
 PyObject* wasp__ev_loop__EventLoop_start_loop(EventLoop_Object* self, PyObject* args);
 PyObject* wasp__ev_loop__EventLoop_stop_loop(EventLoop_Object* self, PyObject* args);
 PyObject* wasp__ev_loop__EventLoop_is_started(EventLoop_Object* self, PyObject* args);
+PyObject* wasp__ev_loop__EventLoop_immediate_stop(EventLoop_Object* self, PyObject* args);
 
 #endif // __WASP_C_EXTENSIONS__EV_LOOP_EV_LOOP_WRAPPER_H__
