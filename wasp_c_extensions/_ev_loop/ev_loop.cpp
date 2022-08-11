@@ -24,7 +24,7 @@ using namespace wasp::ev_loop;
 
 EventLoopBase::EventLoopBase(wasp::queue::ICMCQueue* q, std::chrono::milliseconds t, bool s):
     is_running(false),
-    immediate_stop(s),
+    __immediate_stop(s),
     queue(q),
     last_event(q->subscribe()),
     trigger(t)
@@ -52,7 +52,7 @@ void EventLoopBase::start_loop(){
         }
     }
 
-    if (! this->immediate_stop){
+    if (! this->__immediate_stop){
         while (this->process_event());
     }
 

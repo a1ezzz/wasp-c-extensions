@@ -11,9 +11,10 @@ def telegram_notification(message) {
     string(credentialsId: 'telegramBotToken', variable: 'BOT_TOKEN'),
     string(credentialsId: 'telegramChatId', variable: 'CHAT_ID')
   ]) {
-    def telegram_url = "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage"
+    def telegram_url = 'https://api.telegram.org/bot${BOT_TOKEN}/sendMessage'
+    message          = "-d text='${message}'"
 
-    sh "curl -X POST ${telegram_url} -d chat_id=${CHAT_ID} -d parse_mode=HTML -d text='${message}'"
+    sh 'curl -X POST -d chat_id=${CHAT_ID} -d parse_mode=HTML ' + message + ' ' + telegram_url
   }
 }
 
@@ -55,7 +56,7 @@ pipeline {
       steps {
         script {
             docker.image(python_image).inside(python_container_cmd){
-                sh "cd /sources && /workspace/venv/bin/python ./setup.py test"
+                sh "cd /sources/tests && /workspace/venv/bin/py.test -c pytest.ini"
             }
         }
       }
@@ -63,6 +64,14 @@ pipeline {
   }  // stages
 
   post {
+
+    always {
+      script{
+        docker.image(python_image).inside(python_container_cmd){
+          sh "rm -rf /workspace/venv/"
+        }
+      }
+    }
 
     fixed { 
       script {

@@ -182,3 +182,10 @@ PyObject* wasp__ev_loop__EventLoop_is_started(EventLoop_Object* self, PyObject* 
     }
     Py_RETURN_FALSE;
 }
+
+PyObject* wasp__ev_loop__EventLoop_immediate_stop(EventLoop_Object* self, PyObject* args){
+    if ((static_cast<PyEventLoop*>(self->__event_loop))->immediate_stop()){
+	Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
