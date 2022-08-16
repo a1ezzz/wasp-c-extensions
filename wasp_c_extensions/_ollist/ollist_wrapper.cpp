@@ -48,3 +48,24 @@ void wasp__ollist__OrderedLinkedList_dealloc(OrderedLinkedList_Object* self){
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
+PyObject* wasp__ollist__OrderedLinkedList_push(OrderedLinkedList_Object* self, PyObject* args)
+{
+    long priority = 0;
+    PyObject* payload = NULL;
+    if (! PyArg_ParseTuple(args, "lO", &priority, &payload)){  // "O"-values do not increment ref. counter
+        PyErr_SetString(PyExc_ValueError, "Callback parsing error");
+        return NULL;
+    }
+
+    Py_RETURN_TRUE;
+}
+
+PyObject* wasp__ollist__OrderedLinkedList_pull(OrderedLinkedList_Object* self, PyObject* args)
+{
+    Py_RETURN_TRUE;
+}
+
+PyObject* wasp__ollist__OrderedLinkedList_next(OrderedLinkedList_Object* self, PyObject* args)
+{
+    Py_RETURN_TRUE;
+}

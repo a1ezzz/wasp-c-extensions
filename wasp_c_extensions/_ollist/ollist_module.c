@@ -26,6 +26,21 @@
 
 static PyMethodDef OrderedLinkedList_methods[] = {
 
+    {
+        "push", (PyCFunction) wasp__ollist__OrderedLinkedList_push, METH_VARARGS,
+        "\"Push\" description.\n"
+    },
+
+    {
+        "pull", (PyCFunction) wasp__ollist__OrderedLinkedList_pull, METH_NOARGS,
+        "\"Pull\" description.\n"
+    },
+
+    {
+        "next", (PyCFunction) wasp__ollist__OrderedLinkedList_next, METH_NOARGS,
+        "\"Next\" description.\n"
+    },
+
     {NULL}
 };
 

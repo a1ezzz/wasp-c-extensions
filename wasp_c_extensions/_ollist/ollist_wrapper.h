@@ -35,4 +35,8 @@ typedef struct {
 PyObject* wasp__ollist__OrderedLinkedList_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
 void wasp__ollist__OrderedLinkedList_dealloc(OrderedLinkedList_Object* self);
 
+PyObject* wasp__ollist__OrderedLinkedList_push(OrderedLinkedList_Object* self, PyObject* args);
+PyObject* wasp__ollist__OrderedLinkedList_pull(OrderedLinkedList_Object* self, PyObject* args);
+PyObject* wasp__ollist__OrderedLinkedList_next(OrderedLinkedList_Object* self, PyObject* args);
+
 #endif // __WASP_C_EXTENSIONS__OLLIST_OLLIST_WRAPPER_H__
