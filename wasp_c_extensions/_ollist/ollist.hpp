@@ -1,4 +1,4 @@
-// wasp_c_extensions/_ollist/ollist_wrapper.h
+// wasp_c_extensions/_ollist/ollist.hpp
 //
 //Copyright (C) 2022 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
@@ -18,21 +18,15 @@
 //You should have received a copy of the GNU Lesser General Public License
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef __WASP_C_EXTENSIONS__OLLIST_OLLIST_WRAPPER_H__
-#define __WASP_C_EXTENSIONS__OLLIST_OLLIST_WRAPPER_H__
+#ifndef __WASP_C_EXTENSIONS__OLLIST_OLLIST_HPP__
+#define __WASP_C_EXTENSIONS__OLLIST_OLLIST_HPP__
 
-#include <Python.h>
+namespace wasp::ollist {
 
-#include "common.h"
+class OrderedLinkedList{
 
-#define __STR_OLLIST_NAME__ __STR_FN_CALL__(__OLLIST_NAME__)
+};
 
-typedef struct {
-	PyObject_HEAD
-	void* __list;
-} OrderedLinkedList_Object;
+};  // namespace wasp::ollist
 
-PyObject* wasp__ollist__OrderedLinkedList_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
-void wasp__ollist__OrderedLinkedList_dealloc(OrderedLinkedList_Object* self);
-
-#endif // __WASP_C_EXTENSIONS__OLLIST_OLLIST_WRAPPER_H__
+#endif  //  __WASP_C_EXTENSIONS__OLLIST_OLLIST_HPP__

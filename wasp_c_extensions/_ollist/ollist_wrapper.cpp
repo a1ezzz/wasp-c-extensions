@@ -1,4 +1,4 @@
-// wasp_c_extensions/_ollist/ollist_wrapper.h
+// wasp_c_extensions/_ollist/ollist_wrapper.cpp
 //
 //Copyright (C) 2022 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
@@ -18,21 +18,33 @@
 //You should have received a copy of the GNU Lesser General Public License
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef __WASP_C_EXTENSIONS__OLLIST_OLLIST_WRAPPER_H__
-#define __WASP_C_EXTENSIONS__OLLIST_OLLIST_WRAPPER_H__
+extern "C" {
+#include "ollist_wrapper.h"
+}
 
-#include <Python.h>
+#include "ollist.hpp"
 
-#include "common.h"
+using namespace wasp::ollist;
 
-#define __STR_OLLIST_NAME__ __STR_FN_CALL__(__OLLIST_NAME__)
+PyObject* wasp__ollist__OrderedLinkedList_new(PyTypeObject* type, PyObject* args, PyObject* kwargs){
+    OrderedLinkedList_Object* self = (OrderedLinkedList_Object *) type->tp_alloc(type, 0);
+    if (self == NULL) {
+        return PyErr_NoMemory();
+    }
 
-typedef struct {
-	PyObject_HEAD
-	void* __list;
-} OrderedLinkedList_Object;
+    self->__list = new OrderedLinkedList();
 
-PyObject* wasp__ollist__OrderedLinkedList_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
-void wasp__ollist__OrderedLinkedList_dealloc(OrderedLinkedList_Object* self);
+    __WASP_DEBUG__("OrderedLinkedList_Object object was allocated");
+    return (PyObject *) self;
+}
 
-#endif // __WASP_C_EXTENSIONS__OLLIST_OLLIST_WRAPPER_H__
+void wasp__ollist__OrderedLinkedList_dealloc(OrderedLinkedList_Object* self){
+
+    if (self->__list){
+        delete (static_cast<OrderedLinkedList*>(self->__list));
+        self->__list = NULL;
+    }
+
+    Py_TYPE(self)->tp_free((PyObject *) self);
+}
+

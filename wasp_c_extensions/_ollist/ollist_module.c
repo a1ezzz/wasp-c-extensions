@@ -37,6 +37,8 @@ static PyTypeObject OrderedLinkedList_Type = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "Simple description placement",
 
+    .tp_new = wasp__ollist__OrderedLinkedList_new,
+    .tp_dealloc = (destructor) wasp__ollist__OrderedLinkedList_dealloc,
     .tp_methods = OrderedLinkedList_methods,
 };
 
