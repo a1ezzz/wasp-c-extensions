@@ -1,4 +1,4 @@
-// wasp_c_extensions/_ollist/ollist_wrapper.h
+// wasp_c_extensions/_pqueue/pqueue_wrapper.h
 //
 //Copyright (C) 2022 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
@@ -18,25 +18,25 @@
 //You should have received a copy of the GNU Lesser General Public License
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef __WASP_C_EXTENSIONS__OLLIST_OLLIST_WRAPPER_H__
-#define __WASP_C_EXTENSIONS__OLLIST_OLLIST_WRAPPER_H__
+#ifndef __WASP_C_EXTENSIONS__PQUEUE_PQUEUE_WRAPPER_H__
+#define __WASP_C_EXTENSIONS__PQUEUE_PQUEUE_WRAPPER_H__
 
 #include <Python.h>
 
 #include "common.h"
 
-#define __STR_OLLIST_NAME__ __STR_FN_CALL__(__OLLIST_NAME__)
+#define __STR_PQUEUE_NAME__ __STR_FN_CALL__(__PQUEUE_NAME__)
 
 typedef struct {
 	PyObject_HEAD
-	void* __list;
-} OrderedLinkedList_Object;
+	void* __queue;
+} PriorityQueue_Object;
 
-PyObject* wasp__ollist__OrderedLinkedList_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
-void wasp__ollist__OrderedLinkedList_dealloc(OrderedLinkedList_Object* self);
+PyObject* wasp__pqueue__PriorityQueue_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
+void wasp__pqueue__PriorityQueue_dealloc(PriorityQueue_Object* self);
 
-PyObject* wasp__ollist__OrderedLinkedList_push(OrderedLinkedList_Object* self, PyObject* args);
-PyObject* wasp__ollist__OrderedLinkedList_pull(OrderedLinkedList_Object* self, PyObject* args);
-PyObject* wasp__ollist__OrderedLinkedList_next(OrderedLinkedList_Object* self, PyObject* args);
+PyObject* wasp__pqueue__PriorityQueue_push(PriorityQueue_Object* self, PyObject* args);
+PyObject* wasp__pqueue__PriorityQueue_pull(PriorityQueue_Object* self, PyObject* args);
+PyObject* wasp__pqueue__PriorityQueue_next(PriorityQueue_Object* self, PyObject* args);
 
-#endif // __WASP_C_EXTENSIONS__OLLIST_OLLIST_WRAPPER_H__
+#endif // __WASP_C_EXTENSIONS__PQUEUE_PQUEUE_WRAPPER_H__

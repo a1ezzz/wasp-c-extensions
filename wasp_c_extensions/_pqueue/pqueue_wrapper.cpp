@@ -1,4 +1,4 @@
-// wasp_c_extensions/_ollist/ollist_wrapper.cpp
+// wasp_c_extensions/_pqueue/pqueue_wrapper.cpp
 //
 //Copyright (C) 2022 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
@@ -19,53 +19,55 @@
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
 extern "C" {
-#include "ollist_wrapper.h"
+#include "pqueue_wrapper.h"
 }
 
-#include "ollist.hpp"
+#include "pqueue.hpp"
 
-using namespace wasp::ollist;
+using namespace wasp::pqueue;
 
-PyObject* wasp__ollist__OrderedLinkedList_new(PyTypeObject* type, PyObject* args, PyObject* kwargs){
-    OrderedLinkedList_Object* self = (OrderedLinkedList_Object *) type->tp_alloc(type, 0);
+PyObject* wasp__pqueue__PriorityQueue_new(PyTypeObject* type, PyObject* args, PyObject* kwargs){
+    PriorityQueue_Object* self = (PriorityQueue_Object *) type->tp_alloc(type, 0);
     if (self == NULL) {
         return PyErr_NoMemory();
     }
 
-    self->__list = new OrderedLinkedList();
+    self->__queue = new PriorityQueue();
 
-    __WASP_DEBUG__("OrderedLinkedList_Object object was allocated");
+    __WASP_DEBUG__("PriorityQueue_Object object was allocated");
     return (PyObject *) self;
 }
 
-void wasp__ollist__OrderedLinkedList_dealloc(OrderedLinkedList_Object* self){
+void wasp__pqueue__PriorityQueue_dealloc(PriorityQueue_Object* self){
 
-    if (self->__list){
-        delete (static_cast<OrderedLinkedList*>(self->__list));
-        self->__list = NULL;
+    if (self->__queue){
+        delete (static_cast<PriorityQueue*>(self->__queue));
+        self->__queue = NULL;
     }
 
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
-PyObject* wasp__ollist__OrderedLinkedList_push(OrderedLinkedList_Object* self, PyObject* args)
+PyObject* wasp__pqueue__PriorityQueue_push(PriorityQueue_Object* self, PyObject* args)
 {
-    long priority = 0;
+    item_priority priority = 0;
     PyObject* payload = NULL;
     if (! PyArg_ParseTuple(args, "lO", &priority, &payload)){  // "O"-values do not increment ref. counter
         PyErr_SetString(PyExc_ValueError, "Callback parsing error");
         return NULL;
     }
 
+    static_cast<PriorityQueue*>(self->__queue)->push(new QueueItem(priority, payload));
+
     Py_RETURN_TRUE;
 }
 
-PyObject* wasp__ollist__OrderedLinkedList_pull(OrderedLinkedList_Object* self, PyObject* args)
+PyObject* wasp__pqueue__PriorityQueue_pull(PriorityQueue_Object* self, PyObject* args)
 {
     Py_RETURN_TRUE;
 }
 
-PyObject* wasp__ollist__OrderedLinkedList_next(OrderedLinkedList_Object* self, PyObject* args)
+PyObject* wasp__pqueue__PriorityQueue_next(PriorityQueue_Object* self, PyObject* args)
 {
     Py_RETURN_TRUE;
 }

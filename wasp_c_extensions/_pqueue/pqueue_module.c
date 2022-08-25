@@ -1,4 +1,4 @@
-// wasp_c_extensions/_ollist/ollist_module.c
+// wasp_c_extensions/_pqueue/pqueue_module.c
 //
 //Copyright (C) 2022 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
@@ -22,39 +22,39 @@
 
 #include "module_common.h"
 
-#include "ollist_wrapper.h"
+#include "pqueue_wrapper.h"
 
-static PyMethodDef OrderedLinkedList_methods[] = {
+static PyMethodDef PriorityQueue_methods[] = {
 
     {
-        "push", (PyCFunction) wasp__ollist__OrderedLinkedList_push, METH_VARARGS,
+        "push", (PyCFunction) wasp__pqueue__PriorityQueue_push, METH_VARARGS,
         "\"Push\" description.\n"
     },
 
     {
-        "pull", (PyCFunction) wasp__ollist__OrderedLinkedList_pull, METH_NOARGS,
+        "pull", (PyCFunction) wasp__pqueue__PriorityQueue_pull, METH_NOARGS,
         "\"Pull\" description.\n"
     },
 
     {
-        "next", (PyCFunction) wasp__ollist__OrderedLinkedList_next, METH_NOARGS,
+        "next", (PyCFunction) wasp__pqueue__PriorityQueue_next, METH_NOARGS,
         "\"Next\" description.\n"
     },
 
     {NULL}
 };
 
-static PyTypeObject OrderedLinkedList_Type = {
+static PyTypeObject PriorityQueue_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__ "." __STR_OLLIST_NAME__,
-    .tp_basicsize = sizeof(OrderedLinkedList_Type),
+    .tp_name = __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__ "." __STR_PQUEUE_NAME__,
+    .tp_basicsize = sizeof(PriorityQueue_Type),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "Simple description placement",
 
-    .tp_new = wasp__ollist__OrderedLinkedList_new,
-    .tp_dealloc = (destructor) wasp__ollist__OrderedLinkedList_dealloc,
-    .tp_methods = OrderedLinkedList_methods,
+    .tp_new = wasp__pqueue__PriorityQueue_new,
+    .tp_dealloc = (destructor) wasp__pqueue__PriorityQueue_dealloc,
+    .tp_methods = PriorityQueue_methods,
 };
 
 
@@ -73,7 +73,7 @@ PyMODINIT_FUNC __PYINIT_MAIN_FN__ (void) {
     if (m == NULL)
         return NULL;
 
-    if (! add_type_to_module(m, &OrderedLinkedList_Type, __STR_OLLIST_NAME__)){
+    if (! add_type_to_module(m, &PriorityQueue_Type, __STR_PQUEUE_NAME__)){
         return NULL;
     }
 

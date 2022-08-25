@@ -1,4 +1,4 @@
-// wasp_c_extensions/ollist/ollist.cpp
+// wasp_c_extensions/_pqueue/pqueue.cpp
 //
 //Copyright (C) 2022 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
@@ -17,3 +17,24 @@
 //
 //You should have received a copy of the GNU Lesser General Public License
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
+
+#include "pqueue.hpp"
+
+using namespace wasp::pqueue;
+
+PriorityQueue::PriorityQueue():
+    read_ptr(NULL),
+    head(NULL)
+{
+}
+
+void PriorityQueue::push(QueueItem* item){
+}
+
+QueueItem* PriorityQueue::next(){
+    return NULL;
+}
+
+QueueItem* PriorityQueue::pull(){
+    return NULL;
+}
