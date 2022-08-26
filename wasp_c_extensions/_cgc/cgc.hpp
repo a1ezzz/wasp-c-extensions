@@ -23,6 +23,12 @@
 
 namespace wasp::cgc {
 
+class ConcurrentGarbageCollector{
+
+    public:
+        ConcurrentGarbageCollector();
+};
+
 };  // namespace wasp::cgc
 
 #endif  //  __WASP_C_EXTENSIONS__CGC_CGC_HPP__

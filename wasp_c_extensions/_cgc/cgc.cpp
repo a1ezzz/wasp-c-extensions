@@ -21,3 +21,6 @@
 #include "cgc.hpp"
 
 using namespace wasp::cgc;
+
+ConcurrentGarbageCollector::ConcurrentGarbageCollector()
+{}
