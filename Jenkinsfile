@@ -80,12 +80,13 @@ pipeline {
           sh "mkdir ${WORKSPACE}@tmp/coverage"
           sh "cp -rf ${WORKSPACE}/wasp_c_extensions ${WORKSPACE}@tmp/coverage"
           sh "cp -rf ${WORKSPACE}/tests  ${WORKSPACE}@tmp/coverage"
-          sh "cd ${WORKSPACE}@tmp/coverage && ./tests/cpptests.sh tests-exec"
+          sh "cd ${WORKSPACE}@tmp/coverage && ./tests/cpptests.sh"
 
           withCredentials([
             string(credentialsId: 'coveralls-wasp-c-extensions-token', variable: 'COVERALLS_REPO_TOKEN'),
           ]){
             docker.image(python_image).inside(python_container_cmd){
+              sh "cd /workspace/coverage && ln -s /sources/.git"
               sh "cd /workspace/coverage && echo 'service_name: jenkins' > coveralls.yml"
               sh "cd /workspace/coverage && /workspace/venv/bin/cpp-coveralls --coveralls-yaml coveralls.yml --include wasp_c_extensions --extension '.cpp'"
             }
