@@ -1,6 +1,7 @@
 #!/usr/bin/env groovy
 
 
+def cppunit_test_exec = "${WORKSPACE}@tmp/cpp_unit_tests"
 def python_version = params.getOrDefault("python_version", "3.9")
 def python_image = "python:${python_version}"
 def python_container_cmd = '-u root -v ${WORKSPACE}@tmp:/workspace -v ${WORKSPACE}:/sources'
@@ -53,7 +54,7 @@ pipeline {
       }
     }
 
-    stage('Test'){
+    stage('Python Test'){
       steps {
         script {
             docker.image(python_image).inside(python_container_cmd){
@@ -62,12 +63,23 @@ pipeline {
         }
       }
     }
+
+    stage('CPP Tests'){
+      steps {
+        script {
+            sh "g++ ${WORKSPACE}/tests/*_test.cpp -o ${cppunit_test_exec} -lcppunit"
+            sh "${cppunit_test_exec}"
+        }
+      }
+    }
+
   }  // stages
 
   post {
 
     always {
       script{
+        sh "rm -f ${cppunit_test_exec}"
         docker.image(python_image).inside(python_container_cmd){
           sh "rm -rf /workspace/venv/"
         }
