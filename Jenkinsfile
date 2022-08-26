@@ -9,10 +9,10 @@ def python_container_cmd = ''' \
   -v ${WORKSPACE}@tmp:/workspace \
   -v ${WORKSPACE}:/sources \
   -e COVERALLS_REPO_TOKEN \
-  -e COVERALLS_SERVICE_NAME="jenkins" \
   -e BUILD_NUMBER \
   -e GIT_BRANCH \
-  -e CI_BRANCH="${GIT_BRANCH}" \
+  -e TRAVIS_BRANCH="${GIT_BRANCH}" \
+  -e TRAVIS_JOB_ID="${BUILD_NUMBER}"
   -e CI_PULL_REQUEST \
 '''
 
@@ -83,7 +83,8 @@ pipeline {
             string(credentialsId: 'coveralls-wasp-c-extensions-token', variable: 'COVERALLS_REPO_TOKEN'),
           ]){
             docker.image(python_image).inside(python_container_cmd){
-                sh "cd /sources && /workspace/venv/bin/cpp-coveralls --include wasp_c_extensions"
+              sh "echo 'service_name: jenkins' > coveralls.yml"
+              sh "cd /sources && /workspace/venv/bin/cpp-coveralls --coveralls-yaml coveralls.yml --include wasp_c_extensions"
             }
           }
         }
