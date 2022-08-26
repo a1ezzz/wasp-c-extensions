@@ -94,7 +94,7 @@ pipeline {
                   --coveralls-yaml coveralls.yml \
                   --include wasp_c_extensions \
                   --extension '.cpp' \
-                  --exclude-pattern '.+_wrapper\.cpp' \
+                  --exclude-pattern '.+_wrapper\\.cpp' \
               """
             }
           }
