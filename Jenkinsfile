@@ -38,7 +38,7 @@ pipeline {
   }
 
   environment {
-    COVERALLS_SERVICE_NAME=jenkins
+    COVERALLS_SERVICE_NAME="jenkins"
   }
 
   stages {
