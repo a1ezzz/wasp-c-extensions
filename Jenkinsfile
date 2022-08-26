@@ -1,7 +1,6 @@
 #!/usr/bin/env groovy
 
 
-def cppunit_test_exec = '${WORKSPACE}@tmp/cpp_unit_tests'
 def python_version = params.getOrDefault("python_version", "3.9")
 def python_image = "python:${python_version}"
 def python_container_cmd = ''' \
@@ -47,6 +46,7 @@ pipeline {
         script {
             docker.image(python_image).inside(python_container_cmd){
                 sh "python -m venv /workspace/venv"
+                sh "rm -rf /workspace/coverage"
             }
         }
       }
@@ -77,14 +77,17 @@ pipeline {
     stage('CPP Tests'){
       steps {
         script {
-          sh "${WORKSPACE}/tests/cpptests.sh ${cppunit_test_exec}"
+          sh "mkdir ${WORKSPACE}@tmp/coverage"
+          sh "cp -rf ${WORKSPACE}/wasp_c_extensions ${WORKSPACE}@tmp/coverage"
+          sh "cp -rf ${WORKSPACE}/tests  ${WORKSPACE}@tmp/coverage"
+          sh "cd ${WORKSPACE}@tmp/coverage && ./tests/cpptests.sh tests-exec"
 
           withCredentials([
             string(credentialsId: 'coveralls-wasp-c-extensions-token', variable: 'COVERALLS_REPO_TOKEN'),
           ]){
             docker.image(python_image).inside(python_container_cmd){
-              sh "echo 'service_name: jenkins' > coveralls.yml"
-              sh "cd /sources && /workspace/venv/bin/cpp-coveralls --coveralls-yaml coveralls.yml --include wasp_c_extensions"
+              sh "cd /workspace/coverage && echo 'service_name: jenkins' > coveralls.yml"
+              sh "cd /workspace/coverage && /workspace/venv/bin/cpp-coveralls --coveralls-yaml coveralls.yml --include wasp_c_extensions --extension '.cpp'"
             }
           }
         }
@@ -97,9 +100,9 @@ pipeline {
 
     always {
       script{
-        sh "rm -f ${cppunit_test_exec}"
         docker.image(python_image).inside(python_container_cmd){
           sh "rm -rf /workspace/venv/"
+          sh "rm -rf /workspace/coverage/"
         }
       }
     }
