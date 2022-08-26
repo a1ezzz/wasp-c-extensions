@@ -21,12 +21,41 @@
 #ifndef __WASP_C_EXTENSIONS__CGC_CGC_HPP__
 #define __WASP_C_EXTENSIONS__CGC_CGC_HPP__
 
+#include <atomic>
+#include <cstddef>
+
 namespace wasp::cgc {
+
+class ConcurrentGCItem{
+    public:
+        ConcurrentGCItem(void (*destroy_fn)(ConcurrentGCItem*));
+        virtual ~ConcurrentGCItem();
+
+        void (*const destroy_fn)(ConcurrentGCItem*);
+
+        std::atomic<bool> gc_ready;
+        std::atomic<ConcurrentGCItem*> next;
+        std::atomic<ConcurrentGCItem*> prev;
+};
 
 class ConcurrentGarbageCollector{
 
+    std::atomic<ConcurrentGCItem*> head;
+
     public:
         ConcurrentGarbageCollector();
+        virtual ~ConcurrentGarbageCollector();
+
+        void push(ConcurrentGCItem*);
+
+        void collect(ConcurrentGCItem* item = NULL);  // try to clear everything from this GC
+        // or the specified item at least
+
+        void clear();  // clear everything no matter gc_ready is set or not.
+        // ConcurrentGCItem::destroy is called for every item
+
+        ConcurrentGCItem* pop();  // remove an item from a GC no matter gc_ready is set or not
+        // but ConcurrentGCItem::destroy is not called
 };
 
 };  // namespace wasp::cgc

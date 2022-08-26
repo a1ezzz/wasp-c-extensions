@@ -22,5 +22,41 @@
 
 using namespace wasp::cgc;
 
-ConcurrentGarbageCollector::ConcurrentGarbageCollector()
+ConcurrentGCItem::ConcurrentGCItem(void (*fn)(ConcurrentGCItem*)):
+    destroy_fn(fn),
+    gc_ready(false),
+    next(NULL),
+    prev(NULL)
+{
+}
+
+ConcurrentGCItem::~ConcurrentGCItem()
 {}
+
+ConcurrentGarbageCollector::ConcurrentGarbageCollector():
+    head(NULL)
+{}
+
+ConcurrentGarbageCollector::~ConcurrentGarbageCollector()
+{
+    this->clear();
+}
+
+void ConcurrentGarbageCollector::push(ConcurrentGCItem*){
+    // TODO: implement
+}
+
+void ConcurrentGarbageCollector::collect(ConcurrentGCItem* item)
+{
+    // TODO: implement
+}
+
+void ConcurrentGarbageCollector::clear(){
+    // TODO: implement
+}
+
+ConcurrentGCItem* ConcurrentGarbageCollector::pop()
+{
+    // TODO: implement
+    return NULL;
+}
