@@ -12,7 +12,7 @@ def python_container_cmd = ''' \
   -e COVERALLS_SERVICE_NAME \
   -e BUILD_NUMBER \
   -e GIT_BRANCH \
-  -e CI_PULL_REQUEST \  
+  -e CI_PULL_REQUEST \
 '''
 
 
