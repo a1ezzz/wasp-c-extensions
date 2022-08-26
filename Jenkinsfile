@@ -88,7 +88,14 @@ pipeline {
             docker.image(python_image).inside(python_container_cmd){
               sh "cd /workspace/coverage && ln -s /sources/.git"
               sh "cd /workspace/coverage && echo 'service_name: jenkins' > coveralls.yml"
-              sh "cd /workspace/coverage && /workspace/venv/bin/cpp-coveralls --coveralls-yaml coveralls.yml --include wasp_c_extensions --extension '.cpp'"
+              sh """ \
+                cd /workspace/coverage && \
+                /workspace/venv/bin/cpp-coveralls \
+                  --coveralls-yaml coveralls.yml \
+                  --include wasp_c_extensions \
+                  --extension '.cpp' \
+                  --exclude-pattern '.+_wrapper\.cpp' \
+              """
             }
           }
         }
