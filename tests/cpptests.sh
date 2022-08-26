@@ -13,7 +13,7 @@ EVLOOP_CPP_FILES="${ROOT_DIR}/wasp_c_extensions/_ev_loop/ev_loop.cpp"
 PQUEUE_CPP_FILES="${ROOT_DIR}/wasp_c_extensions/_pqueue/pqueue.cpp"
 THREADS_CPP_FILES="${ROOT_DIR}/wasp_c_extensions/_threads/event.cpp"
 
-COVERAGE_FLAGS="${COVERAGE_FLAGS:--fprofile-filter-files='.*\.cpp' --coverage}"
+COVERAGE_FLAGS="${COVERAGE_FLAGS:--fprofile-filter-files=.*\.cpp --coverage}"
 
 g++ -Wall \
     ${COVERAGE_FLAGS} \
