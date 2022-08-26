@@ -67,8 +67,7 @@ pipeline {
     stage('CPP Tests'){
       steps {
         script {
-            sh "g++ ${WORKSPACE}/tests/*_test.cpp -o ${cppunit_test_exec} -lcppunit"
-            sh "${cppunit_test_exec}"
+            sh "${WORKSPACE}/tests/cpptests.sh ${cppunit_test_exec}"
         }
       }
     }
