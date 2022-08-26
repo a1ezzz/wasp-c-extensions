@@ -20,6 +20,6 @@ g++ -fprofile-filter-files='.*\.cpp' --coverage -I"${ROOT_DIR}" -I"${ROOT_DIR}/w
     ${EVLOOP_CPP_FILES} \
     ${PQUEUE_CPP_FILES} \
     ${THREADS_CPP_FILES} \
-    -lcppunit -o "${CPP_EXEC}"  # -lcppunit should be at the end because of some g++ issue on jenkins worker
+    -lcppunit -lpthread -o "${CPP_EXEC}"  # -lcppunit should be at the end because of some g++ issue on jenkins worker
 
 ${CPP_EXEC}
