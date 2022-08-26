@@ -9,9 +9,10 @@ def python_container_cmd = ''' \
   -v ${WORKSPACE}@tmp:/workspace \
   -v ${WORKSPACE}:/sources \
   -e COVERALLS_REPO_TOKEN \
-  -e COVERALLS_SERVICE_NAME \
+  -e COVERALLS_SERVICE_NAME="jenkins" \
   -e BUILD_NUMBER \
   -e GIT_BRANCH \
+  -e CI_BRANCH="${GIT_BRANCH}" \
   -e CI_PULL_REQUEST \
 '''
 
@@ -38,10 +39,6 @@ pipeline {
       name: 'python_version',
       defaultValue: '3.9'
     )
-  }
-
-  environment {
-    COVERALLS_SERVICE_NAME="jenkins"
   }
 
   stages {
