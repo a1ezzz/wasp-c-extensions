@@ -4,7 +4,13 @@
 def cppunit_test_exec = '${WORKSPACE}@tmp/cpp_unit_tests'
 def python_version = params.getOrDefault("python_version", "3.9")
 def python_image = "python:${python_version}"
-def python_container_cmd = '-u root -v ${WORKSPACE}@tmp:/workspace -v ${WORKSPACE}:/sources'
+def python_container_cmd = ''' \
+  -u root \
+  -v ${WORKSPACE}@tmp:/workspace \
+  -v ${WORKSPACE}:/sources \
+  -e COVERALLS_REPO_TOKEN \
+  -e COVERALLS_SERVICE_NAME
+'''
 
 
 def telegram_notification(message) {
@@ -29,6 +35,10 @@ pipeline {
       name: 'python_version',
       defaultValue: '3.9'
     )
+  }
+
+  environment {
+    COVERALLS_SERVICE_NAME=jenkins
   }
 
   stages {
@@ -67,7 +77,15 @@ pipeline {
     stage('CPP Tests'){
       steps {
         script {
-            sh "${WORKSPACE}/tests/cpptests.sh ${cppunit_test_exec}"
+          sh "${WORKSPACE}/tests/cpptests.sh ${cppunit_test_exec}"
+
+          withCredentials([
+            string(credentialsId: 'coveralls-wasp-c-extensions-token', variable: 'COVERALLS_REPO_TOKEN'),
+          ]){
+            docker.image(python_image).inside(python_container_cmd){
+                sh "cd /sources && /workspace/venv/bin/cpp-coveralls --include wasp_c_extensions"
+            }
+          }
         }
       }
     }
