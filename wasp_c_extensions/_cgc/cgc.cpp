@@ -25,13 +25,29 @@ using namespace wasp::cgc;
 ConcurrentGCItem::ConcurrentGCItem(void (*fn)(ConcurrentGCItem*)):
     destroy_fn(fn),
     gc_ready(false),
-    next(NULL),
-    prev(NULL)
+    next(NULL)
 {
+    if (! this->destroy_fn) {
+        throw NullPointerException();
+    }
+}
+
+void ConcurrentGCItem::destroy(ConcurrentGCItem* item_ptr){
+
+    void (*destroy_fn)(wasp::cgc::ConcurrentGCItem*) = NULL;
+
+    if (! item_ptr) {
+        throw NullPointerException();
+    }
+
+    destroy_fn = item_ptr->destroy_fn;
+    destroy_fn(item_ptr);
 }
 
 ConcurrentGCItem::~ConcurrentGCItem()
-{}
+{
+    assert(this->gc_ready.load(std::memory_order_seq_cst) == true);
+}
 
 ConcurrentGarbageCollector::ConcurrentGarbageCollector():
     head(NULL)
@@ -39,20 +55,73 @@ ConcurrentGarbageCollector::ConcurrentGarbageCollector():
 
 ConcurrentGarbageCollector::~ConcurrentGarbageCollector()
 {
-    this->clear();
+    this->collect();
 }
 
-void ConcurrentGarbageCollector::push(ConcurrentGCItem*){
-    // TODO: implement
+void ConcurrentGarbageCollector::push(ConcurrentGCItem* item_ptr){
+    if (! item_ptr) {
+        throw NullPointerException();
+    }
+
+    if (item_ptr->gc_ready.load(std::memory_order_seq_cst) == true) {
+        throw InvalidItemState();
+    }
+
+    while (! this->__push(item_ptr, item_ptr));
 }
 
-void ConcurrentGarbageCollector::collect(ConcurrentGCItem* item)
+bool ConcurrentGarbageCollector::__push(ConcurrentGCItem* new_head_ptr, ConcurrentGCItem* new_tail_ptr)
 {
-    // TODO: implement
+    ConcurrentGCItem* current_head = this->head.load(std::memory_order_seq_cst);
+
+    new_tail_ptr->next.store(current_head, std::memory_order_seq_cst);
+    return this->head.compare_exchange_strong(current_head, new_head_ptr, std::memory_order_seq_cst);
 }
 
-void ConcurrentGarbageCollector::clear(){
-    // TODO: implement
+ConcurrentGCItem* ConcurrentGarbageCollector::detach_head()
+{
+    ConcurrentGCItem* current_head = NULL;
+
+    do {
+        current_head = this->head.load(std::memory_order_seq_cst);
+    }
+    while (! this->head.compare_exchange_strong(current_head, NULL, std::memory_order_seq_cst));
+    return current_head;
+}
+
+void ConcurrentGarbageCollector::collect()
+{
+    ConcurrentGCItem *head_ptr = NULL;  // pointer to a new head
+    ConcurrentGCItem *tail_ptr = NULL;  // pointer to a new tail
+
+    ConcurrentGCItem *next_ptr = NULL;  // pointer to a new item to check next
+
+    ConcurrentGCItem *current_ptr = this->detach_head();  // current item to check
+
+    while(current_ptr){
+        next_ptr = current_ptr->next.load(std::memory_order_seq_cst);
+
+        if (current_ptr->gc_ready.load(std::memory_order_seq_cst)){
+            ConcurrentGCItem::destroy(current_ptr);
+            current_ptr = next_ptr;
+            continue;
+        }
+
+        if (! head_ptr){
+            head_ptr = current_ptr;
+        }
+
+        if (tail_ptr){
+            tail_ptr->next.store(next_ptr, std::memory_order_seq_cst);
+        }
+        tail_ptr = current_ptr;
+
+        current_ptr = next_ptr;
+    }
+
+    if (head_ptr && tail_ptr){
+        while (! this->__push(head_ptr, tail_ptr));
+    }
 }
 
 ConcurrentGCItem* ConcurrentGarbageCollector::pop()

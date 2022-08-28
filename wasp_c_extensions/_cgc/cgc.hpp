@@ -22,9 +22,14 @@
 #define __WASP_C_EXTENSIONS__CGC_CGC_HPP__
 
 #include <atomic>
+#include <cassert>
 #include <cstddef>
 
 namespace wasp::cgc {
+
+class NullPointerException{};
+
+class InvalidItemState{};
 
 class ConcurrentGCItem{
     public:
@@ -35,12 +40,18 @@ class ConcurrentGCItem{
 
         std::atomic<bool> gc_ready;
         std::atomic<ConcurrentGCItem*> next;
-        std::atomic<ConcurrentGCItem*> prev;
+
+        static void destroy(ConcurrentGCItem*);
 };
 
 class ConcurrentGarbageCollector{
 
     std::atomic<ConcurrentGCItem*> head;
+    std::atomic<size_t> count;  // TODO: count and make a public method
+
+    bool __push(ConcurrentGCItem*, ConcurrentGCItem*);
+
+    ConcurrentGCItem* detach_head();
 
     public:
         ConcurrentGarbageCollector();
@@ -48,11 +59,7 @@ class ConcurrentGarbageCollector{
 
         void push(ConcurrentGCItem*);
 
-        void collect(ConcurrentGCItem* item = NULL);  // try to clear everything from this GC
-        // or the specified item at least
-
-        void clear();  // clear everything no matter gc_ready is set or not.
-        // ConcurrentGCItem::destroy is called for every item
+        void collect();  // try to clear everything from this GC. This method should not called often
 
         ConcurrentGCItem* pop();  // remove an item from a GC no matter gc_ready is set or not
         // but ConcurrentGCItem::destroy is not called
