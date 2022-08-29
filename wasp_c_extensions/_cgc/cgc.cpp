@@ -50,12 +50,20 @@ ConcurrentGCItem::~ConcurrentGCItem()
 }
 
 ConcurrentGarbageCollector::ConcurrentGarbageCollector():
-    head(NULL)
+    head(NULL),
+    parallel_gc(0),
+    count(0)
 {}
 
 ConcurrentGarbageCollector::~ConcurrentGarbageCollector()
 {
+    assert(this->parallel_gc.load(std::memory_order_seq_cst) == 0);
     this->collect();
+    assert(this->count.load(std::memory_order_seq_cst) == 0);
+}
+
+size_t ConcurrentGarbageCollector::items(){
+    return this->count.load(std::memory_order_seq_cst);
 }
 
 void ConcurrentGarbageCollector::push(ConcurrentGCItem* item_ptr){
@@ -68,6 +76,7 @@ void ConcurrentGarbageCollector::push(ConcurrentGCItem* item_ptr){
     }
 
     while (! this->__push(item_ptr, item_ptr));
+    this->count.fetch_add(1, std::memory_order_seq_cst);
 }
 
 bool ConcurrentGarbageCollector::__push(ConcurrentGCItem* new_head_ptr, ConcurrentGCItem* new_tail_ptr)
@@ -93,16 +102,17 @@ void ConcurrentGarbageCollector::collect()
 {
     ConcurrentGCItem *head_ptr = NULL;  // pointer to a new head
     ConcurrentGCItem *tail_ptr = NULL;  // pointer to a new tail
-
     ConcurrentGCItem *next_ptr = NULL;  // pointer to a new item to check next
-
     ConcurrentGCItem *current_ptr = this->detach_head();  // current item to check
+
+    this->parallel_gc.fetch_add(1, std::memory_order_seq_cst);
 
     while(current_ptr){
         next_ptr = current_ptr->next.load(std::memory_order_seq_cst);
 
         if (current_ptr->gc_ready.load(std::memory_order_seq_cst)){
             ConcurrentGCItem::destroy(current_ptr);
+            this->count.fetch_sub(1, std::memory_order_seq_cst);
             current_ptr = next_ptr;
             continue;
         }
@@ -122,10 +132,6 @@ void ConcurrentGarbageCollector::collect()
     if (head_ptr && tail_ptr){
         while (! this->__push(head_ptr, tail_ptr));
     }
-}
 
-ConcurrentGCItem* ConcurrentGarbageCollector::pop()
-{
-    // TODO: implement
-    return NULL;
+    this->parallel_gc.fetch_sub(1, std::memory_order_seq_cst);
 }

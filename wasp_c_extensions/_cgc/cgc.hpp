@@ -47,7 +47,8 @@ class ConcurrentGCItem{
 class ConcurrentGarbageCollector{
 
     std::atomic<ConcurrentGCItem*> head;
-    std::atomic<size_t> count;  // TODO: count and make a public method
+    std::atomic<size_t> parallel_gc;
+    std::atomic<size_t> count;
 
     bool __push(ConcurrentGCItem*, ConcurrentGCItem*);
 
@@ -57,12 +58,11 @@ class ConcurrentGarbageCollector{
         ConcurrentGarbageCollector();
         virtual ~ConcurrentGarbageCollector();
 
+        size_t items();
+
         void push(ConcurrentGCItem*);
 
         void collect();  // try to clear everything from this GC. This method should not called often
-
-        ConcurrentGCItem* pop();  // remove an item from a GC no matter gc_ready is set or not
-        // but ConcurrentGCItem::destroy is not called
 };
 
 };  // namespace wasp::cgc
