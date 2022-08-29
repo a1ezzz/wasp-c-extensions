@@ -32,6 +32,8 @@ typedef struct {
 	void* __queue;
 } PriorityQueue_Object;
 
+extern PyObject* wasp__pqueue__cgc_module;
+
 PyObject* wasp__pqueue__PriorityQueue_new(PyTypeObject* type, PyObject* args, PyObject* kwargs);
 void wasp__pqueue__PriorityQueue_dealloc(PriorityQueue_Object* self);
 

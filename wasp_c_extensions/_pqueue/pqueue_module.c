@@ -24,6 +24,8 @@
 
 #include "pqueue_wrapper.h"
 
+static void wasp__cgc__module_free(void*);
+
 static PyMethodDef PriorityQueue_methods[] = {
 
     {
@@ -63,11 +65,20 @@ static struct PyModuleDef module = {
     .m_name = __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__,
     .m_doc = "This is the \"" __STR_PACKAGE_NAME__ "." __STR_MODULE_NAME__"\" module",
     .m_size = -1,
+    .m_free = wasp__cgc__module_free,
 };
 
 PyMODINIT_FUNC __PYINIT_MAIN_FN__ (void) {
 
     __WASP_DEBUG__("Module is about to initialize");
+
+    wasp__pqueue__cgc_module = PyImport_ImportModule(  // new ref or NULL with exception
+        __STR_PACKAGE_NAME__ "." __STR_FN_CALL__(__CGCMODULE_NAME__)
+    );
+
+    if (! wasp__pqueue__cgc_module){
+        return NULL;
+    }
 
     PyObject* m = PyModule_Create(&module);
     if (m == NULL)
@@ -80,4 +91,11 @@ PyMODINIT_FUNC __PYINIT_MAIN_FN__ (void) {
     __WASP_DEBUG__("Module was created");
 
     return m;
+}
+
+void wasp__cgc__module_free(void* m){
+    if (wasp__pqueue__cgc_module){
+        Py_DECREF(wasp__pqueue__cgc_module);
+        wasp__pqueue__cgc_module = NULL;
+    }
 }

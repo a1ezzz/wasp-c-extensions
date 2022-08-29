@@ -25,6 +25,9 @@
 
 #include "common.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 static PyObject* add_type_to_module(PyObject* module, PyTypeObject* type, const char* type_name){
 	if (PyType_Ready(type) < 0){
 		__WASP_DEBUG__("Unable to prepare \"%s\"", type_name);
@@ -36,5 +39,7 @@ static PyObject* add_type_to_module(PyObject* module, PyTypeObject* type, const 
     __WASP_DEBUG__("Type \"%s\" was linked", type_name);
     return module;
 }
+
+#pragma GCC diagnostic pop
 
 #endif // __WASP_C_EXTENSIONS__MODULE_COMMON_H__

@@ -26,6 +26,8 @@ extern "C" {
 
 using namespace wasp::pqueue;
 
+PyObject* wasp__pqueue__cgc_module = NULL;
+
 PyObject* wasp__pqueue__PriorityQueue_new(PyTypeObject* type, PyObject* args, PyObject* kwargs){
     PriorityQueue_Object* self = (PriorityQueue_Object *) type->tp_alloc(type, 0);
     if (self == NULL) {
