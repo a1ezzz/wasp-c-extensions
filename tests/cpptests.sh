@@ -14,9 +14,11 @@ PQUEUE_CPP_FILES="${ROOT_DIR}/wasp_c_extensions/_pqueue/pqueue.cpp"
 THREADS_CPP_FILES="${ROOT_DIR}/wasp_c_extensions/_threads/event.cpp"
 
 COVERAGE_FLAGS="${COVERAGE_FLAGS:--fprofile-filter-files=.*\.cpp --coverage -fprofile-update=atomic}"
+GDB_FLAGS="${GDB_FLAGS:- }"
 
 g++ -Wall \
     ${COVERAGE_FLAGS} \
+    ${GDB_FLAGS} \
     -I"${ROOT_DIR}" \
     -I"${ROOT_DIR}/wasp_c_extensions" \
     ${TEST_FILES} \

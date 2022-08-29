@@ -123,6 +123,8 @@ class TestWaspCGCTest:
         for (size_t i=0; i < wasp::test_case::items_per_thread; i++){
             items[i]->gc_ready.store(true, std::memory_order_seq_cst);
         }
+
+        wasp::test_case::global_gc->collect();
     }
 };
 

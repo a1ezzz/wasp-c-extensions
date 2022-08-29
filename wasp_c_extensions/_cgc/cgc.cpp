@@ -82,7 +82,6 @@ void ConcurrentGarbageCollector::push(ConcurrentGCItem* item_ptr){
 bool ConcurrentGarbageCollector::__push(ConcurrentGCItem* new_head_ptr, ConcurrentGCItem* new_tail_ptr)
 {
     ConcurrentGCItem* current_head = this->head.load(std::memory_order_seq_cst);
-
     new_tail_ptr->next.store(current_head, std::memory_order_seq_cst);
     return this->head.compare_exchange_strong(current_head, new_head_ptr, std::memory_order_seq_cst);
 }
@@ -113,6 +112,10 @@ void ConcurrentGarbageCollector::collect()
         if (current_ptr->gc_ready.load(std::memory_order_seq_cst)){
             ConcurrentGCItem::destroy(current_ptr);
             this->count.fetch_sub(1, std::memory_order_seq_cst);
+
+            if (tail_ptr && tail_ptr->next.load(std::memory_order_seq_cst) == current_ptr){
+                tail_ptr->next.store(NULL, std::memory_order_seq_cst);
+            }
             current_ptr = next_ptr;
             continue;
         }
@@ -122,7 +125,7 @@ void ConcurrentGarbageCollector::collect()
         }
 
         if (tail_ptr){
-            tail_ptr->next.store(next_ptr, std::memory_order_seq_cst);
+            tail_ptr->next.store(current_ptr, std::memory_order_seq_cst);
         }
         tail_ptr = current_ptr;
 
