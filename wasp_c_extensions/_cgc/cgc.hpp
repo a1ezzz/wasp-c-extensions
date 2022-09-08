@@ -31,18 +31,7 @@ class NullPointerException{};
 
 class InvalidItemState{};
 
-class ConcurrentGCItem{
-    public:
-        ConcurrentGCItem(void (*destroy_fn)(ConcurrentGCItem*));
-        virtual ~ConcurrentGCItem();
-
-        void (*const destroy_fn)(ConcurrentGCItem*);
-
-        std::atomic<bool> gc_ready;
-        std::atomic<ConcurrentGCItem*> next;
-
-        static void destroy(ConcurrentGCItem*);
-};
+class ConcurrentGCItem;
 
 class ConcurrentGarbageCollector{
 
@@ -63,6 +52,49 @@ class ConcurrentGarbageCollector{
         void push(ConcurrentGCItem*);
 
         void collect();  // try to clear everything from this GC. This method should not called often
+};
+
+class PointerDestructor{
+    void (*const destroy_fn)(PointerDestructor*);
+
+    public:
+
+        PointerDestructor(void (*destroy_fn)(PointerDestructor*));
+        virtual ~PointerDestructor();
+
+        virtual void destroyable() = 0;
+
+        static void destroy(PointerDestructor*);
+};
+
+class ConcurrentGCItem:
+    public PointerDestructor
+{
+    volatile bool gc_ready_flag;  // There is only one lazy switch false->true, so it may not be atomic
+    std::atomic<ConcurrentGCItem*> gc_next;
+
+    friend ConcurrentGarbageCollector;
+
+    public:
+        ConcurrentGCItem(void (*destroy_fn)(PointerDestructor*));
+        virtual ~ConcurrentGCItem();
+
+        void destroyable();
+};
+
+class SmartPointer
+{
+
+    std::atomic<size_t> usage_counter;
+    std::atomic<bool> concurrency_liveness_flag;
+    std::atomic<PointerDestructor*> pointer;
+
+    public:
+        SmartPointer(PointerDestructor*);
+        virtual ~SmartPointer();
+
+        PointerDestructor* acquire();
+        void release();
 };
 
 };  // namespace wasp::cgc

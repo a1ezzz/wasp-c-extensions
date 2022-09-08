@@ -22,19 +22,19 @@
 
 using namespace wasp::cgc;
 
-ConcurrentGCItem::ConcurrentGCItem(void (*fn)(ConcurrentGCItem*)):
-    destroy_fn(fn),
-    gc_ready(false),
-    next(NULL)
+PointerDestructor::PointerDestructor(void (*fn)(PointerDestructor*)):
+    destroy_fn(fn)
 {
     if (! this->destroy_fn) {
         throw NullPointerException();
     }
 }
 
-void ConcurrentGCItem::destroy(ConcurrentGCItem* item_ptr){
+PointerDestructor::~PointerDestructor(){}
 
-    void (*destroy_fn)(wasp::cgc::ConcurrentGCItem*) = NULL;
+void PointerDestructor::destroy(PointerDestructor* item_ptr){
+
+    void (*destroy_fn)(wasp::cgc::PointerDestructor*) = NULL;
 
     if (! item_ptr) {
         throw NullPointerException();
@@ -44,9 +44,20 @@ void ConcurrentGCItem::destroy(ConcurrentGCItem* item_ptr){
     destroy_fn(item_ptr);
 }
 
+ConcurrentGCItem::ConcurrentGCItem(void (*fn)(PointerDestructor*)):
+    PointerDestructor(fn),
+    gc_ready_flag(false),
+    gc_next(NULL)
+{}
+
+void ConcurrentGCItem::destroyable()
+{
+    this->gc_ready_flag = true;
+}
+
 ConcurrentGCItem::~ConcurrentGCItem()
 {
-    assert(this->gc_ready.load(std::memory_order_seq_cst) == true);
+    assert(this->gc_ready_flag == true);
 }
 
 ConcurrentGarbageCollector::ConcurrentGarbageCollector():
@@ -71,7 +82,7 @@ void ConcurrentGarbageCollector::push(ConcurrentGCItem* item_ptr){
         throw NullPointerException();
     }
 
-    if (item_ptr->gc_ready.load(std::memory_order_seq_cst) == true) {
+    if (item_ptr->gc_ready_flag == true) {
         throw InvalidItemState();
     }
 
@@ -82,7 +93,7 @@ void ConcurrentGarbageCollector::push(ConcurrentGCItem* item_ptr){
 bool ConcurrentGarbageCollector::__push(ConcurrentGCItem* new_head_ptr, ConcurrentGCItem* new_tail_ptr)
 {
     ConcurrentGCItem* current_head = this->head.load(std::memory_order_seq_cst);
-    new_tail_ptr->next.store(current_head, std::memory_order_seq_cst);
+    new_tail_ptr->gc_next.store(current_head, std::memory_order_seq_cst);
     return this->head.compare_exchange_strong(current_head, new_head_ptr, std::memory_order_seq_cst);
 }
 
@@ -107,14 +118,14 @@ void ConcurrentGarbageCollector::collect()
     this->parallel_gc.fetch_add(1, std::memory_order_seq_cst);
 
     while(current_ptr){
-        next_ptr = current_ptr->next.load(std::memory_order_seq_cst);
+        next_ptr = current_ptr->gc_next.load(std::memory_order_seq_cst);
 
-        if (current_ptr->gc_ready.load(std::memory_order_seq_cst)){
+        if (current_ptr->gc_ready_flag){
             ConcurrentGCItem::destroy(current_ptr);
             this->count.fetch_sub(1, std::memory_order_seq_cst);
 
-            if (tail_ptr && tail_ptr->next.load(std::memory_order_seq_cst) == current_ptr){
-                tail_ptr->next.store(NULL, std::memory_order_seq_cst);
+            if (tail_ptr && tail_ptr->gc_next.load(std::memory_order_seq_cst) == current_ptr){
+                tail_ptr->gc_next.store(NULL, std::memory_order_seq_cst);
             }
             current_ptr = next_ptr;
             continue;
@@ -125,7 +136,7 @@ void ConcurrentGarbageCollector::collect()
         }
 
         if (tail_ptr){
-            tail_ptr->next.store(current_ptr, std::memory_order_seq_cst);
+            tail_ptr->gc_next.store(current_ptr, std::memory_order_seq_cst);
         }
         tail_ptr = current_ptr;
 
@@ -137,4 +148,54 @@ void ConcurrentGarbageCollector::collect()
     }
 
     this->parallel_gc.fetch_sub(1, std::memory_order_seq_cst);
+}
+
+SmartPointer::SmartPointer(PointerDestructor* p):
+    usage_counter(1),
+    concurrency_liveness_flag(1),
+    pointer(p)
+{
+    if (! p) {
+        throw NullPointerException();
+    }
+}
+
+SmartPointer::~SmartPointer(){}
+
+PointerDestructor* SmartPointer::acquire(){
+    PointerDestructor* pointer = this->pointer.load(std::memory_order_seq_cst);
+
+    if (! pointer){
+        return NULL;
+    }
+
+    this->concurrency_liveness_flag.store(true, std::memory_order_seq_cst);
+
+    this->usage_counter.fetch_add(1, std::memory_order_seq_cst);
+
+    if(! this->concurrency_liveness_flag.load(std::memory_order_seq_cst)){
+        return NULL;
+    }
+
+    return pointer;
+}
+
+void SmartPointer::release(){
+
+    PointerDestructor* pointer = this->pointer.load(std::memory_order_seq_cst);
+
+    assert(pointer != NULL);
+
+    if (this->usage_counter.fetch_sub(1, std::memory_order_seq_cst) > 1){
+        return;
+    }
+
+    this->concurrency_liveness_flag.store(false, std::memory_order_seq_cst);
+
+    if (this->usage_counter.load(std::memory_order_seq_cst)){
+        return;  // parallel acquire on the way
+    }
+
+    pointer->destroyable();
+    this->pointer.store(NULL, std::memory_order_seq_cst);
 }

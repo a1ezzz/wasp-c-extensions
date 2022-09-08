@@ -9,37 +9,44 @@
 
 #include "wasp_c_extensions/_cgc/cgc.hpp"
 
-namespace wasp::test_case {
-    const size_t threads_num = 1024;
-    const size_t items_per_thread = 10240;
+namespace wasp::cgc_test::test_case {
+    const size_t gc_threads_num = 1024;
+    const size_t gc_items_per_thread = 10240;
     wasp::cgc::ConcurrentGarbageCollector* global_gc = NULL;
+
+    const size_t sp_test_runs = 100;
+    const size_t sp_threads_num = 10240;
+    const size_t sp_acquire_per_thread = 3;
+    wasp::cgc::SmartPointer* global_sp = NULL;
 
     std::atomic<bool> start_event_flag(false);
     std::condition_variable start_event_cv;
     std::mutex start_event_mutex;
 }
 
+class SampleCGCItem:
+    public wasp::cgc::ConcurrentGCItem
+{
+
+    public:
+        SampleCGCItem(void (*fn)(PointerDestructor*)):
+            wasp::cgc::ConcurrentGCItem(fn)
+        {}
+
+        virtual ~SampleCGCItem(){};
+
+        static SampleCGCItem* create(){
+            return new SampleCGCItem(&SampleCGCItem::destroy);
+        }
+
+        static void destroy(wasp::cgc::PointerDestructor* ptr){
+            delete ptr;
+        }
+};
+
 class TestWaspCGCTest:
     public CppUnit::TestFixture
 {
-
-    class Item:
-        public wasp::cgc::ConcurrentGCItem
-    {
-
-        public:
-            Item(void (*fn)(ConcurrentGCItem*)):
-                wasp::cgc::ConcurrentGCItem(fn)
-            {}
-
-            static Item* create(){
-                return new Item(&Item::destroy);
-            }
-
-            static void destroy(wasp::cgc::ConcurrentGCItem* ptr){
-                delete ptr;
-            }
-    };
 
     CPPUNIT_TEST_SUITE(TestWaspCGCTest);
     CPPUNIT_TEST(test_item_destroy);
@@ -54,15 +61,9 @@ class TestWaspCGCTest:
     }
 
     void test_item(){
-        Item* item_ptr = Item::create();
-
-        CPPUNIT_ASSERT_THROW(new Item(NULL), wasp::cgc::NullPointerException);
-
-        CPPUNIT_ASSERT_EQUAL(item_ptr->gc_ready.load(std::memory_order_seq_cst), false);
-        CPPUNIT_ASSERT(item_ptr->next.load(std::memory_order_seq_cst) == NULL);
-
-        item_ptr->gc_ready.store(true, std::memory_order_seq_cst);  // without it the assertion fails
-
+        SampleCGCItem* item_ptr = SampleCGCItem::create();
+        CPPUNIT_ASSERT_THROW(new SampleCGCItem(NULL), wasp::cgc::NullPointerException);
+        item_ptr->destroyable();
         wasp::cgc::ConcurrentGCItem::destroy(item_ptr);
     }
 
@@ -73,59 +74,117 @@ class TestWaspCGCTest:
     }
 
     void test_gc_push_errors(){
-        Item* item_ptr = Item::create();
+        SampleCGCItem* item_ptr = SampleCGCItem::create();
         wasp::cgc::ConcurrentGarbageCollector* cgc = new wasp::cgc::ConcurrentGarbageCollector();
 
         CPPUNIT_ASSERT_THROW(cgc->push(NULL), wasp::cgc::NullPointerException);
 
-        item_ptr->gc_ready.store(true, std::memory_order_seq_cst);  // without it the assertion fails
+        item_ptr->destroyable();
         CPPUNIT_ASSERT_THROW(cgc->push(item_ptr), wasp::cgc::InvalidItemState);
     }
 
     void test_gc_concurrent_push(){
-        std::thread* threads[wasp::test_case::threads_num];
+        std::thread* threads[wasp::cgc_test::test_case::gc_threads_num];
 
-        wasp::test_case::global_gc = new wasp::cgc::ConcurrentGarbageCollector();
+        wasp::cgc_test::test_case::global_gc = new wasp::cgc::ConcurrentGarbageCollector();
 
-        for (size_t i=0; i < wasp::test_case::threads_num; i++){
+        for (size_t i=0; i < wasp::cgc_test::test_case::gc_threads_num; i++){
             threads[i] = new std::thread(TestWaspCGCTest::push_threaded_fn);
         }
 
-        wasp::test_case::start_event_flag.store(true, std::memory_order_seq_cst);
+        wasp::cgc_test::test_case::start_event_flag.store(true, std::memory_order_seq_cst);
 
         {
-            std::lock_guard<std::mutex> lock(wasp::test_case::start_event_mutex);
-            wasp::test_case::start_event_cv.notify_all();
+            std::lock_guard<std::mutex> lock(wasp::cgc_test::test_case::start_event_mutex);
+            wasp::cgc_test::test_case::start_event_cv.notify_all();
         }
 
-        for (size_t i=0; i < wasp::test_case::threads_num; i++){
+        for (size_t i=0; i < wasp::cgc_test::test_case::gc_threads_num; i++){
             threads[i]->join();
             delete threads[i];
         }
 
-        delete wasp::test_case::global_gc;
-        wasp::test_case::global_gc = NULL;
+        delete wasp::cgc_test::test_case::global_gc;
+        wasp::cgc_test::test_case::global_gc = NULL;
     }
 
     static void push_threaded_fn(){
-        Item* items[wasp::test_case::items_per_thread];
+        SampleCGCItem* items[wasp::cgc_test::test_case::gc_items_per_thread];
 
-        while (! wasp::test_case::start_event_flag.load(std::memory_order_seq_cst)){
-            std::unique_lock<std::mutex> lock(wasp::test_case::start_event_mutex);
-            wasp::test_case::start_event_cv.wait(lock);
+        while (! wasp::cgc_test::test_case::start_event_flag.load(std::memory_order_seq_cst)){
+            std::unique_lock<std::mutex> lock(wasp::cgc_test::test_case::start_event_mutex);
+            wasp::cgc_test::test_case::start_event_cv.wait(lock);
         }
 
-        for (size_t i=0; i < wasp::test_case::items_per_thread; i++){
-            items[i] = Item::create();
-            wasp::test_case::global_gc->push(items[i]);
+        for (size_t i=0; i < wasp::cgc_test::test_case::gc_items_per_thread; i++){
+            items[i] = SampleCGCItem::create();
+            wasp::cgc_test::test_case::global_gc->push(items[i]);
         }
 
-        for (size_t i=0; i < wasp::test_case::items_per_thread; i++){
-            items[i]->gc_ready.store(true, std::memory_order_seq_cst);
+        for (size_t i=0; i < wasp::cgc_test::test_case::gc_items_per_thread; i++){
+            items[i]->destroyable();
         }
 
-        wasp::test_case::global_gc->collect();
+        wasp::cgc_test::test_case::global_gc->collect();
     }
 };
 
-CPPUNIT_TEST_SUITE_REGISTRATION( TestWaspCGCTest);
+class TestSmartPointer:
+    public CppUnit::TestFixture
+{
+    CPPUNIT_TEST_SUITE(TestSmartPointer);
+    CPPUNIT_TEST(test_concurrency);
+    CPPUNIT_TEST_SUITE_END();
+
+    void test_concurrency(){
+        wasp::cgc_test::test_case::global_gc = new wasp::cgc::ConcurrentGarbageCollector();
+
+        for (size_t i=0; i < wasp::cgc_test::test_case::sp_test_runs; i++){
+            this->single_concurrency_run();
+        }
+
+        delete wasp::cgc_test::test_case::global_gc;
+        wasp::cgc_test::test_case::global_gc = NULL;
+    }
+
+    void single_concurrency_run(){
+        std::thread* threads[wasp::cgc_test::test_case::sp_threads_num];
+        SampleCGCItem* item_ptr = SampleCGCItem::create();
+        wasp::cgc_test::test_case::global_sp = new wasp::cgc::SmartPointer(item_ptr);
+
+        wasp::cgc_test::test_case::global_gc->push(item_ptr);
+
+        for (size_t i=0; i < wasp::cgc_test::test_case::sp_threads_num; i++){
+            threads[i] = new std::thread(TestSmartPointer::sp_threaded_fn);
+        }
+
+        wasp::cgc_test::test_case::global_sp->release();
+
+        for (size_t i=0; i < wasp::cgc_test::test_case::sp_threads_num; i++){
+            threads[i]->join();
+            delete threads[i];
+        }
+
+        delete wasp::cgc_test::test_case::global_sp;
+        wasp::cgc_test::test_case::global_sp = NULL;
+    }
+
+    static void sp_threaded_fn(){
+
+        if (wasp::cgc_test::test_case::global_sp->acquire()){
+
+            for (size_t i=1; i < wasp::cgc_test::test_case::sp_acquire_per_thread; i++){
+                CPPUNIT_ASSERT(wasp::cgc_test::test_case::global_sp->acquire() != NULL);
+            }
+
+            for (size_t i=0; i < wasp::cgc_test::test_case::sp_acquire_per_thread; i++){
+                wasp::cgc_test::test_case::global_sp->release();
+                wasp::cgc_test::test_case::global_gc->collect();
+            }
+        }
+    }
+};
+
+CPPUNIT_TEST_SUITE_REGISTRATION(TestWaspCGCTest);
+
+CPPUNIT_TEST_SUITE_REGISTRATION(TestSmartPointer);
