@@ -14,9 +14,14 @@ namespace wasp::cgc_test::test_case {
     const size_t gc_items_per_thread = 10240;
     wasp::cgc::ConcurrentGarbageCollector* global_gc = NULL;
 
-    const size_t sp_test_runs = 100;
-    const size_t sp_threads_num = 10240;
-    const size_t sp_acquire_per_thread = 3;
+    const size_t sp_simple_test_runs = 100;
+    const size_t sp_simple_threads_num = 10240;
+    const size_t sp_simple_acquire_per_thread = 3;
+
+    const size_t sp_advanced_test_runs = 1000;
+    const size_t sp_advanced_threads_num = 100;
+    const size_t sp_advanced_acquire_per_thread = 3;
+
     wasp::cgc::SmartPointer* global_sp = NULL;
 
     std::atomic<bool> start_event_flag(false);
@@ -133,34 +138,35 @@ class TestSmartPointer:
     public CppUnit::TestFixture
 {
     CPPUNIT_TEST_SUITE(TestSmartPointer);
-    CPPUNIT_TEST(test_concurrency);
+    CPPUNIT_TEST(test_simple_concurrency);
+    CPPUNIT_TEST(test_advanced_concurrency);
     CPPUNIT_TEST_SUITE_END();
 
-    void test_concurrency(){
+    void test_simple_concurrency(){
         wasp::cgc_test::test_case::global_gc = new wasp::cgc::ConcurrentGarbageCollector();
 
-        for (size_t i=0; i < wasp::cgc_test::test_case::sp_test_runs; i++){
-            this->single_concurrency_run();
+        for (size_t i=0; i < wasp::cgc_test::test_case::sp_simple_test_runs; i++){
+            this->threads_test(wasp::cgc_test::test_case::sp_simple_threads_num, TestSmartPointer::sp_simple_threaded_fn);
         }
 
         delete wasp::cgc_test::test_case::global_gc;
         wasp::cgc_test::test_case::global_gc = NULL;
     }
 
-    void single_concurrency_run(){
-        std::thread* threads[wasp::cgc_test::test_case::sp_threads_num];
+    void threads_test(const size_t threads_num, void (*f) ()){
+        std::thread* threads[threads_num];
         SampleCGCItem* item_ptr = SampleCGCItem::create();
         wasp::cgc_test::test_case::global_sp = new wasp::cgc::SmartPointer(item_ptr);
 
         wasp::cgc_test::test_case::global_gc->push(item_ptr);
 
-        for (size_t i=0; i < wasp::cgc_test::test_case::sp_threads_num; i++){
-            threads[i] = new std::thread(TestSmartPointer::sp_threaded_fn);
+        for (size_t i=0; i < threads_num; i++){
+            threads[i] = new std::thread(f);
         }
 
         wasp::cgc_test::test_case::global_sp->release();
 
-        for (size_t i=0; i < wasp::cgc_test::test_case::sp_threads_num; i++){
+        for (size_t i=0; i < threads_num; i++){
             threads[i]->join();
             delete threads[i];
         }
@@ -169,19 +175,54 @@ class TestSmartPointer:
         wasp::cgc_test::test_case::global_sp = NULL;
     }
 
-    static void sp_threaded_fn(){
+    static void sp_simple_threaded_fn(){
 
         if (wasp::cgc_test::test_case::global_sp->acquire()){
 
-            for (size_t i=1; i < wasp::cgc_test::test_case::sp_acquire_per_thread; i++){
-                CPPUNIT_ASSERT(wasp::cgc_test::test_case::global_sp->acquire() != NULL);
+            for (size_t i=1; i < wasp::cgc_test::test_case::sp_advanced_acquire_per_thread; i++){
+                 CPPUNIT_ASSERT(wasp::cgc_test::test_case::global_sp->acquire() != NULL);
             }
 
-            for (size_t i=0; i < wasp::cgc_test::test_case::sp_acquire_per_thread; i++){
+            for (size_t i=0; i < wasp::cgc_test::test_case::sp_advanced_acquire_per_thread; i++){
                 wasp::cgc_test::test_case::global_sp->release();
                 wasp::cgc_test::test_case::global_gc->collect();
             }
         }
+    }
+
+    void test_advanced_concurrency(){
+        wasp::cgc_test::test_case::global_gc = new wasp::cgc::ConcurrentGarbageCollector();
+
+        for (size_t i=0; i < wasp::cgc_test::test_case::sp_advanced_test_runs; i++){
+            this->threads_test(
+                wasp::cgc_test::test_case::sp_advanced_threads_num, TestSmartPointer::sp_advanced_threaded_fn
+            );
+        }
+
+        delete wasp::cgc_test::test_case::global_gc;
+        wasp::cgc_test::test_case::global_gc = NULL;
+    }
+
+    static void sp_advanced_threaded_fn(){
+        SampleCGCItem* item_ptr = SampleCGCItem::create();
+        wasp::cgc_test::test_case::global_gc->push(item_ptr);
+
+        if (wasp::cgc_test::test_case::global_sp->acquire()){
+
+            for (size_t i=1; i < wasp::cgc_test::test_case::sp_advanced_acquire_per_thread; i++){
+                CPPUNIT_ASSERT(wasp::cgc_test::test_case::global_sp->acquire() != NULL);
+            }
+
+            for (size_t i=0; i < wasp::cgc_test::test_case::sp_advanced_acquire_per_thread; i++){
+                wasp::cgc_test::test_case::global_sp->release();
+                wasp::cgc_test::test_case::global_gc->collect();
+            }
+        }
+
+        while (! wasp::cgc_test::test_case::global_sp->replace(item_ptr)){};
+        wasp::cgc_test::test_case::global_sp->release();
+        wasp::cgc_test::test_case::global_gc->collect();
+
     }
 };
 
