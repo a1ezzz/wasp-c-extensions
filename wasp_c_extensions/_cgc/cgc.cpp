@@ -150,23 +150,50 @@ void ConcurrentGarbageCollector::collect()
     this->parallel_gc.fetch_sub(1, std::memory_order_seq_cst);
 }
 
-SmartPointer::SmartPointer(PointerDestructor* p):
-    usage_counter(1),
-    concurrency_liveness_flag(1),
-    pointer(p)
-{
-    if (! p) {
-        throw NullPointerException();
-    }
+ResourceSmartLock::ResourceSmartLock():
+    is_dead(true),
+    usage_counter(0),
+    concurrency_call_counter(0),
+    concurrency_liveness_flag(false)
+{}
+
+ResourceSmartLock::~ResourceSmartLock(){
+    assert(this->is_dead.load(std::memory_order_seq_cst) == true);
+    assert(this->usage_counter.load(std::memory_order_seq_cst) == 0);
+};
+
+bool ResourceSmartLock::able_to_reset(){
+    return (this->is_dead.load(std::memory_order_seq_cst) == true) &&
+        (this->usage_counter.load(std::memory_order_seq_cst) == 0) &&
+        (this->concurrency_call_counter.load(std::memory_order_seq_cst) == 0);
 }
 
-SmartPointer::~SmartPointer(){}
+bool ResourceSmartLock::reset()
+{
+    if (
+        (this->is_dead.load(std::memory_order_seq_cst) == true) &&
+        (this->usage_counter.load(std::memory_order_seq_cst) == 0) &&
+        (this->concurrency_call_counter.load(std::memory_order_seq_cst) == 0)
+    ){
+        this->usage_counter.store(1, std::memory_order_seq_cst);
+        this->is_dead.store(false, std::memory_order_seq_cst);
 
-PointerDestructor* SmartPointer::acquire(){
-    PointerDestructor* pointer = this->pointer.load(std::memory_order_seq_cst);
+        return true;
+    }
 
-    if (! pointer){
-        return NULL;
+    return false;
+}
+
+bool ResourceSmartLock::acquire(){
+    if (this->is_dead.load(std::memory_order_seq_cst)){
+        return false;
+    }
+
+    this->concurrency_call_counter.fetch_add(1, std::memory_order_seq_cst);
+
+    if(! this->concurrency_liveness_flag.load(std::memory_order_seq_cst)){
+        this->concurrency_call_counter.fetch_sub(1, std::memory_order_seq_cst);
+        return false;
     }
 
     this->concurrency_liveness_flag.store(true, std::memory_order_seq_cst);
@@ -174,28 +201,103 @@ PointerDestructor* SmartPointer::acquire(){
     this->usage_counter.fetch_add(1, std::memory_order_seq_cst);
 
     if(! this->concurrency_liveness_flag.load(std::memory_order_seq_cst)){
-        return NULL;
+        this->concurrency_call_counter.fetch_sub(1, std::memory_order_seq_cst);
+        return false;
     }
 
-    return pointer;
+    this->concurrency_call_counter.fetch_sub(1, std::memory_order_seq_cst);
+
+    return true;
 }
 
-void SmartPointer::release(){
+bool ResourceSmartLock::release(){
+    size_t sub_result = 0, sub_overflow_value = -1;
 
-    PointerDestructor* pointer = this->pointer.load(std::memory_order_seq_cst);
+    sub_result = this->usage_counter.fetch_sub(1, std::memory_order_seq_cst);
+    assert(sub_result != sub_overflow_value);
 
-    assert(pointer != NULL);
-
-    if (this->usage_counter.fetch_sub(1, std::memory_order_seq_cst) > 1){
-        return;
+    if (sub_result > 1){
+        return false;
     }
 
     this->concurrency_liveness_flag.store(false, std::memory_order_seq_cst);
 
     if (this->usage_counter.load(std::memory_order_seq_cst)){
-        return;  // parallel acquire on the way
+        return false;  // parallel acquire on the way
     }
 
-    pointer->destroyable();
-    this->pointer.store(NULL, std::memory_order_seq_cst);
+    this->is_dead.store(true, std::memory_order_seq_cst);
+
+    return true;
+}
+
+SmartPointer::SmartPointer(PointerDestructor* p):
+    pointer_lock(),
+    pointer(p),
+    zombie_pointer(NULL)
+{
+    if (! p) {
+        throw NullPointerException();
+    }
+
+    assert(this->pointer_lock.reset());
+}
+
+SmartPointer::~SmartPointer(){}
+
+PointerDestructor* SmartPointer::acquire(){
+    PointerDestructor* pointer = this->pointer.load(std::memory_order_seq_cst);
+
+    if (! pointer){  // TODO: check is it require?!
+        return NULL;
+    }
+
+    if (this->pointer_lock.acquire()){
+        return pointer;
+    }
+    return NULL;
+}
+
+void SmartPointer::release(){
+
+    PointerDestructor *pointer = this->pointer.load(std::memory_order_seq_cst);
+
+    assert(pointer != NULL);
+
+    if (this->pointer_lock.release()){
+        if (this->pointer.compare_exchange_strong(pointer, NULL, std::memory_order_seq_cst)){
+            pointer->destroyable();
+            return;
+        }
+        assert(0);  // there must not be a concurrency at this point
+    }
+}
+
+bool SmartPointer::replace(PointerDestructor* new_ptr){
+
+    PointerDestructor* null_ptr = this->pointer.load(std::memory_order_seq_cst);
+
+    assert(new_ptr != NULL);
+
+    if (null_ptr){
+        return false;
+    }
+
+    if (this->pointer_lock.able_to_reset()){  // TODO: check if it is possible to reduce ifs
+        if (this->zombie_pointer.compare_exchange_strong(null_ptr, new_ptr, std::memory_order_seq_cst)) {
+            if (this->pointer_lock.able_to_reset()){
+                if (this->pointer_lock.reset()){
+                    if (this->pointer.compare_exchange_strong(null_ptr, new_ptr, std::memory_order_seq_cst)){
+                        this->zombie_pointer.store(NULL, std::memory_order_seq_cst);
+                        return true;
+                    }
+                    assert(0);
+                }
+                assert(0);
+            }
+            this->zombie_pointer.store(NULL, std::memory_order_seq_cst);
+        }
+    }
+
+    return false;
 }

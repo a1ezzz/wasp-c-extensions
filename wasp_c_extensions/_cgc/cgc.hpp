@@ -82,19 +82,43 @@ class ConcurrentGCItem:
         void destroyable();
 };
 
+class ResourceSmartLock{
+
+    std::atomic<bool> is_dead;                     // marks this resource as unavailable
+    std::atomic<size_t> usage_counter;             // this counter shows how many pending "releases" there are.
+    // This counter is for managing acquire-release concurrency
+    std::atomic<size_t> concurrency_call_counter;  // this counter show how many calls to the "acquire" method
+    // are at the moment. This counter is for managing acquire-reset concurrency
+    std::atomic<bool> concurrency_liveness_flag;   // TODO: check that concurrency_call_counter is not enough
+
+    public:
+        ResourceSmartLock();
+        virtual ~ResourceSmartLock();
+
+        bool able_to_reset();
+
+        bool reset();
+
+        bool acquire();
+
+        bool release();
+};
+
 class SmartPointer
 {
 
-    std::atomic<size_t> usage_counter;
-    std::atomic<bool> concurrency_liveness_flag;
+    ResourceSmartLock pointer_lock;
     std::atomic<PointerDestructor*> pointer;
+    std::atomic<PointerDestructor*> zombie_pointer;
 
     public:
         SmartPointer(PointerDestructor*);
         virtual ~SmartPointer();
 
-        PointerDestructor* acquire();
-        void release();
+        virtual PointerDestructor* acquire();
+        virtual void release();
+
+        bool replace(PointerDestructor* new_ptr);
 };
 
 };  // namespace wasp::cgc
