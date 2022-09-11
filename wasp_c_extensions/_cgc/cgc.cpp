@@ -248,10 +248,6 @@ SmartPointer::~SmartPointer(){}
 PointerDestructor* SmartPointer::acquire(){
     PointerDestructor* pointer = this->pointer.load(std::memory_order_seq_cst);
 
-    if (! pointer){  // TODO: check is it require?!
-        return NULL;
-    }
-
     if (this->pointer_lock.acquire()){
         return pointer;
     }
@@ -283,7 +279,7 @@ bool SmartPointer::replace(PointerDestructor* new_ptr){
         return false;
     }
 
-    if (this->pointer_lock.able_to_reset()){  // TODO: check if it is possible to reduce ifs
+    if (this->pointer_lock.able_to_reset()){
         if (this->zombie_pointer.compare_exchange_strong(null_ptr, new_ptr, std::memory_order_seq_cst)) {
             if (this->pointer_lock.able_to_reset()){
                 if (this->pointer_lock.reset()){

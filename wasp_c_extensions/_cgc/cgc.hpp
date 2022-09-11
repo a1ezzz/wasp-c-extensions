@@ -89,19 +89,22 @@ class ResourceSmartLock{
     // This counter is for managing acquire-release concurrency
     std::atomic<size_t> concurrency_call_counter;  // this counter show how many calls to the "acquire" method
     // are at the moment. This counter is for managing acquire-reset concurrency
-    std::atomic<bool> concurrency_liveness_flag;   // TODO: check that concurrency_call_counter is not enough
+    std::atomic<bool> concurrency_liveness_flag;   // This flag indicate the "acquire" method that the "release" is
+    // on the fly
 
     public:
         ResourceSmartLock();
         virtual ~ResourceSmartLock();
 
-        bool able_to_reset();
+        bool able_to_reset();  // check that a resource is capable to be replaced
 
-        bool reset();
+        bool reset();  // return true, if internal counter/flags are reset. This indicated that resource may be changed
+        // multiple concurrent requests to this method will make errors
 
-        bool acquire();
+        bool acquire();  // acknowledge that a shared resource is requested (returns true if the resource is available)
 
-        bool release();
+        bool release();  // acknowledge that a shared resource is no longer in use. For every successful "acquire"
+        // a single release must be called. (returns true if the resource is ready to be destroyed)
 };
 
 class SmartPointer
@@ -109,7 +112,8 @@ class SmartPointer
 
     ResourceSmartLock pointer_lock;
     std::atomic<PointerDestructor*> pointer;
-    std::atomic<PointerDestructor*> zombie_pointer;
+    std::atomic<PointerDestructor*> zombie_pointer;  // this pointer protect the pointer_lock.reset method
+    // from being called concurrent
 
     public:
         SmartPointer(PointerDestructor*);
