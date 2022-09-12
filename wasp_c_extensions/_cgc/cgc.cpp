@@ -191,11 +191,6 @@ bool ResourceSmartLock::acquire(){
 
     this->concurrency_call_counter.fetch_add(1, std::memory_order_seq_cst);
 
-    if(! this->concurrency_liveness_flag.load(std::memory_order_seq_cst)){
-        this->concurrency_call_counter.fetch_sub(1, std::memory_order_seq_cst);
-        return false;
-    }
-
     this->concurrency_liveness_flag.store(true, std::memory_order_seq_cst);
 
     this->usage_counter.fetch_add(1, std::memory_order_seq_cst);
@@ -295,5 +290,75 @@ bool SmartPointer::replace(PointerDestructor* new_ptr){
         }
     }
 
+    return false;
+}
+
+CGCSmartPointer::CGCSmartPointer(void (*destroy_fn)(PointerDestructor*), PointerDestructor* p):
+    ConcurrentGCItem(destroy_fn),
+    SmartPointer(p),
+    destroyable_request_flag(false),
+    destroyable_commit_flag(false),
+    pending_releases(1)
+{}
+
+CGCSmartPointer::~CGCSmartPointer()
+{
+    assert(this->destroyable_request_flag);
+    assert(this->destroyable_commit_flag.load(std::memory_order_seq_cst));
+    assert(this->pending_releases.load(std::memory_order_seq_cst) == 0);
+}
+
+void CGCSmartPointer::destroyable(){
+    this->destroyable_request_flag = true;
+    this->check_and_fall();
+}
+
+void CGCSmartPointer::check_and_fall()
+{
+    if (! this->destroyable_commit_flag.load(std::memory_order_seq_cst)){
+        if (this->destroyable_request_flag){
+
+            if (this->pending_releases.load(std::memory_order_seq_cst) == 0){
+                if (! this->destroyable_commit_flag.exchange(true, std::memory_order_seq_cst)){
+                    this->ConcurrentGCItem::destroyable();
+                }
+            }
+        }
+    }
+}
+
+PointerDestructor* CGCSmartPointer::acquire(){
+    PointerDestructor* result = NULL;
+
+    this->pending_releases.fetch_add(1, std::memory_order_seq_cst);
+
+    if (! this->destroyable_request_flag){
+        result = this->SmartPointer::acquire();
+        if (result){
+            return result;
+        }
+    }
+
+    this->pending_releases.fetch_sub(1, std::memory_order_seq_cst);
+    this->check_and_fall();
+    return NULL;
+}
+
+void CGCSmartPointer::release(){
+    this->SmartPointer::release();
+    this->pending_releases.fetch_sub(1, std::memory_order_seq_cst);
+    this->check_and_fall();
+}
+
+bool CGCSmartPointer::replace(PointerDestructor* new_ptr){
+    if (! this->destroyable_request_flag){
+        if (this->SmartPointer::replace(new_ptr)){
+            this->pending_releases.fetch_add(1, std::memory_order_seq_cst);
+            return true;
+        };
+        return false;
+    }
+
+    this->check_and_fall();
     return false;
 }

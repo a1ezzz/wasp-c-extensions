@@ -79,7 +79,7 @@ class ConcurrentGCItem:
         ConcurrentGCItem(void (*destroy_fn)(PointerDestructor*));
         virtual ~ConcurrentGCItem();
 
-        void destroyable();
+        virtual void destroyable();
 };
 
 class ResourceSmartLock{
@@ -109,7 +109,6 @@ class ResourceSmartLock{
 
 class SmartPointer
 {
-
     ResourceSmartLock pointer_lock;
     std::atomic<PointerDestructor*> pointer;
     std::atomic<PointerDestructor*> zombie_pointer;  // this pointer protect the pointer_lock.reset method
@@ -121,8 +120,32 @@ class SmartPointer
 
         virtual PointerDestructor* acquire();
         virtual void release();
+        virtual bool replace(PointerDestructor* new_ptr);
+};
 
-        bool replace(PointerDestructor* new_ptr);
+class CGCSmartPointer:
+    public ConcurrentGCItem,
+    public SmartPointer
+{
+    volatile bool destroyable_request_flag;
+    std::atomic<bool> destroyable_commit_flag;
+    std::atomic<size_t> pending_releases;
+
+    void check_and_fall();
+
+    public:
+        CGCSmartPointer(void (*destroy_fn)(PointerDestructor*), PointerDestructor*);
+        virtual ~CGCSmartPointer();
+
+        // SmartPointer methods
+
+        virtual PointerDestructor* acquire();
+        virtual void release();
+        virtual bool replace(PointerDestructor* new_ptr);
+
+        // ConcurrentGCItem method
+
+        virtual void destroyable();  // concurrency with release/replace
 };
 
 };  // namespace wasp::cgc
