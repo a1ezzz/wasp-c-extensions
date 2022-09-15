@@ -23,44 +23,61 @@
 
 #include <atomic>
 #include <cstddef>
+#include <utility>
+
+#include "_cgc/cgc.hpp"
 
 namespace wasp::pqueue {
 
 typedef long int item_priority;
 
-class QueueItem {
+class QueueItem:
+    public wasp::cgc::ConcurrentGCItem
+{
+    QueueItem(void (*destroy_fn)(PointerDestructor*), const item_priority priority, const void* payload); // private
+    // constructor forbids creation on stack
+
     public:
-        QueueItem(item_priority pr,const void* pa):
-            priority(pr),
-            payload(pa),
-            dirty_marks(1),
-            next(NULL),
-            read_flag(false)
-        {}
-        virtual ~QueueItem(){};
+        virtual ~QueueItem();
 
         const item_priority priority;
         const void* payload;
 
-        std::atomic<size_t> dirty_marks;
-        std::atomic<QueueItem*> next;
-        std::atomic<bool> read_flag;
+        std::atomic<QueueItem*> next_item;   // TODO: check if it is possible to hide
+        std::atomic<bool> read_flag;  // whether this node has been read or not
+
+        static QueueItem* create(
+            wasp::cgc::ConcurrentGarbageCollector* gc, const item_priority priority, const void* payload
+        );
+
+        const char* gc_item_id();
 };
 
 class PriorityQueue{
 
-    std::atomic<QueueItem*> read_ptr;
-    std::atomic<QueueItem*> head;
+    typedef std::pair<QueueItem*,QueueItem*> priority_pair;
+
+    wasp::cgc::ConcurrentGarbageCollector* gc;
+    wasp::cgc::CGCSmartPointer* head;
+
+    std::atomic<bool> cleanup_running;
+
+    priority_pair search_next(QueueItem*, const item_priority);
+
+    bool cleanup_head();
+    void cleanup(bool call_gc);  // TODO: this require that all parallel requests are completed which is not
+    // quite concurrent think of a smarted cleaning like to switch head earlier (may be
+    // the CGCSmartPointer::block_mode method will help)
 
     public:
-        PriorityQueue();
-        virtual ~PriorityQueue(){};
+        PriorityQueue(wasp::cgc::ConcurrentGarbageCollector*);
+        virtual ~PriorityQueue();
 
-        virtual void push(QueueItem*);
+        virtual void push(const item_priority priority, const void* payload);
 
-        virtual QueueItem* next();
+        virtual const item_priority next(item_priority default_value);
 
-        virtual QueueItem* pull();
+        virtual const void* pull(); // do some gc!
 };
 
 };  // namespace wasp::pqueue
