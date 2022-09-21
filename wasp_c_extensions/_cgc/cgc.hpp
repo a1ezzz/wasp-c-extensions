@@ -22,6 +22,7 @@
 #define __WASP_C_EXTENSIONS__CGC_CGC_HPP__
 
 #include <atomic>
+#include <iostream>
 #include <cassert>
 #include <cstddef>
 
@@ -52,6 +53,8 @@ class ConcurrentGarbageCollector{
         void push(ConcurrentGCItem*);
 
         void collect();  // try to clear everything from this GC. This method should not called often
+
+        void dump_items_to_clog();
 };
 
 class PointerDestructor{
@@ -80,72 +83,12 @@ class ConcurrentGCItem:
         virtual ~ConcurrentGCItem();
 
         virtual void destroyable();
-};
 
-class ResourceSmartLock{
+        static void heap_destroy_fn(PointerDestructor*);
 
-    std::atomic<bool> is_dead;                     // marks this resource as unavailable
-    std::atomic<size_t> usage_counter;             // this counter shows how many pending "releases" there are.
-    // This counter is for managing acquire-release concurrency
-    std::atomic<size_t> concurrency_call_counter;  // this counter show how many calls to the "acquire" method
-    // are at the moment. This counter is for managing acquire-reset concurrency
-    std::atomic<bool> concurrency_liveness_flag;   // This flag indicate the "acquire" method that the "release" is
-    // on the fly
+        static void stack_destroy_fn(PointerDestructor*);
 
-    public:
-        ResourceSmartLock();
-        virtual ~ResourceSmartLock();
-
-        bool able_to_reset();  // check that a resource is capable to be replaced
-
-        bool reset();  // return true, if internal counter/flags are reset. This indicated that resource may be changed
-        // multiple concurrent requests to this method will make errors
-
-        bool acquire();  // acknowledge that a shared resource is requested (returns true if the resource is available)
-
-        bool release();  // acknowledge that a shared resource is no longer in use. For every successful "acquire"
-        // a single release must be called. (returns true if the resource is ready to be destroyed)
-};
-
-class SmartPointer
-{
-    ResourceSmartLock pointer_lock;
-    std::atomic<PointerDestructor*> pointer;
-    std::atomic<PointerDestructor*> zombie_pointer;  // this pointer protect the pointer_lock.reset method
-    // from being called concurrent
-
-    public:
-        SmartPointer(PointerDestructor*);
-        virtual ~SmartPointer();
-
-        virtual PointerDestructor* acquire();
-        virtual void release();
-        virtual bool replace(PointerDestructor* new_ptr);
-};
-
-class CGCSmartPointer:
-    public ConcurrentGCItem,
-    public SmartPointer
-{
-    volatile bool destroyable_request_flag;
-    std::atomic<bool> destroyable_commit_flag;
-    std::atomic<size_t> pending_releases;
-
-    void check_and_fall();
-
-    public:
-        CGCSmartPointer(void (*destroy_fn)(PointerDestructor*), PointerDestructor*);
-        virtual ~CGCSmartPointer();
-
-        // SmartPointer methods
-
-        virtual PointerDestructor* acquire();
-        virtual void release();
-        virtual bool replace(PointerDestructor* new_ptr);
-
-        // ConcurrentGCItem method
-
-        virtual void destroyable();  // concurrency with release/replace
+        virtual const char* gc_item_id();
 };
 
 };  // namespace wasp::cgc
