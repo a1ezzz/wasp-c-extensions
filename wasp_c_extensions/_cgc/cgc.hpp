@@ -54,7 +54,7 @@ class ConcurrentGarbageCollector{
 
         void collect();  // try to clear everything from this GC. This method should not called often
 
-        void dump_items_to_clog();
+        void dump_items(std::ostream&);
 };
 
 class PointerDestructor{
@@ -88,7 +88,7 @@ class ConcurrentGCItem:
 
         static void stack_destroy_fn(PointerDestructor*);
 
-        virtual const char* gc_item_id();
+        virtual void gc_item_id(std::ostream&);
 };
 
 };  // namespace wasp::cgc

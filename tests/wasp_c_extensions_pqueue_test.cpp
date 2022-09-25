@@ -11,8 +11,9 @@
 
 
 namespace wasp::pqueue_test::test_case {
-    const size_t threads_num = 10;
-    const size_t items_per_thread = 5;
+    const size_t threads_num = 100;  // TODO: increase!
+    const size_t items_per_thread = 100;
+    const size_t test_runs = 10;
     wasp::cgc::ConcurrentGarbageCollector* global_gc = NULL;
     wasp::pqueue::PriorityQueue* global_queue = NULL;
     std::atomic<size_t> pull_counter(0);
@@ -64,12 +65,20 @@ class TestWaspPQueueTest: // TODO: rename?!
     }
 
     void test_queue_concurrent_push(){
+        for (size_t i=0; i < wasp::pqueue_test::test_case::test_runs; i++){
+            queue_concurrent_push();
+        }
+    }
+
+    void queue_concurrent_push(){
         std::thread* threads[wasp::pqueue_test::test_case::threads_num];
 
         wasp::pqueue_test::test_case::global_gc = new wasp::cgc::ConcurrentGarbageCollector();
         wasp::pqueue_test::test_case::global_queue = new wasp::pqueue::PriorityQueue(
             wasp::pqueue_test::test_case::global_gc
         );
+
+        wasp::pqueue_test::test_case::pull_counter.store(0, std::memory_order_seq_cst);
 
         for (size_t i=0; i < wasp::pqueue_test::test_case::threads_num; i++){
             threads[i] = new std::thread(TestWaspPQueueTest::push_threaded_fn);

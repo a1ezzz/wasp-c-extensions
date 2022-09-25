@@ -40,6 +40,10 @@ bool ResourceSmartLock::able_to_reset(){
         (this->concurrency_call_counter.load(std::memory_order_seq_cst) == 0);
 }
 
+size_t ResourceSmartLock::counter(){
+    return this->usage_counter.load(std::memory_order_seq_cst);
+}
+
 bool ResourceSmartLock::reset()
 {
     if (
@@ -69,6 +73,7 @@ bool ResourceSmartLock::acquire(){
 
     if(! this->concurrency_liveness_flag.load(std::memory_order_seq_cst)){
         this->concurrency_call_counter.fetch_sub(1, std::memory_order_seq_cst);
+        this->usage_counter.fetch_sub(1, std::memory_order_seq_cst);
         return false;
     }
 
@@ -109,17 +114,20 @@ SmartPointerBase::~SmartPointerBase(){}
 PointerDestructor* SmartPointerBase::acquire(){
     PointerDestructor* pointer = this->pointer.load(std::memory_order_seq_cst);
 
-    if (this->pointer_lock.acquire()){
+    if (pointer && this->pointer_lock.acquire()){
         return pointer;
     }
     return NULL;
 }
 
+size_t SmartPointerBase::usage_counter(){
+    return this->pointer_lock.counter();
+}
+
 void SmartPointerBase::release(){
+    PointerDestructor* pointer = this->pointer.load(std::memory_order_seq_cst);
 
-    PointerDestructor *pointer = this->pointer.load(std::memory_order_seq_cst);
-
-    assert(pointer != NULL);
+    assert(pointer);
 
     if (this->pointer_lock.release()){
         if (this->pointer.compare_exchange_strong(pointer, NULL, std::memory_order_seq_cst)){
@@ -131,7 +139,6 @@ void SmartPointerBase::release(){
 }
 
 bool SmartPointerBase::replace(PointerDestructor* new_ptr){
-
     PointerDestructor* null_ptr = this->pointer.load(std::memory_order_seq_cst);
 
     assert(new_ptr != NULL);
@@ -159,15 +166,6 @@ bool SmartPointerBase::replace(PointerDestructor* new_ptr){
     return false;
 }
 
-bool SmartPointerBase::swap(PointerDestructor* new_ptr){
-    if (this->replace(new_ptr)){
-        return true;
-    }
-
-    //
-    return false;
-}
-
 CGCSmartPointerBase::CGCSmartPointerBase(void (*destroy_fn)(PointerDestructor*)):
     ConcurrentGCItem(destroy_fn),
     block_mode_flag(false),
@@ -188,6 +186,10 @@ void CGCSmartPointerBase::block_mode(){
     this->block_mode_flag = true;
 }
 
+size_t CGCSmartPointerBase::releases(){
+    return this->pending_releases.load(std::memory_order_seq_cst);
+}
+
 void CGCSmartPointerBase::destroyable(){
     assert(this->block_mode_flag);
     this->destroyable_request_flag = true;
@@ -198,7 +200,6 @@ void CGCSmartPointerBase::check_and_fall()
 {
     if (! this->destroyable_commit_flag.load(std::memory_order_seq_cst)){
         if (this->destroyable_request_flag){
-
             if (this->pending_releases.load(std::memory_order_seq_cst) == 0){
                 if (! this->destroyable_commit_flag.exchange(true, std::memory_order_seq_cst)){
                     this->ConcurrentGCItem::destroyable();

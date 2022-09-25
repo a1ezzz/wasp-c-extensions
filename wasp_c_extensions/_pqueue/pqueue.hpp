@@ -26,16 +26,23 @@
 #include <utility>
 
 #include "_cgc/cgc.hpp"
+#include "_cgc/smart_ptr.hpp"
 
 namespace wasp::pqueue {
 
 typedef long int item_priority;
 
+class QueueItem;
+
 class QueueItem:
     public wasp::cgc::ConcurrentGCItem
 {
-    QueueItem(void (*destroy_fn)(PointerDestructor*), const item_priority priority, const void* payload); // private
-    // constructor forbids creation on stack
+    QueueItem(
+        void (*destroy_fn)(PointerDestructor*),
+        const item_priority priority,
+        const void* payload,
+        wasp::cgc::CGCSmartPointer<QueueItem>* smart_pointer
+    ); // private constructor forbids creation on stack
 
     public:
         virtual ~QueueItem();
@@ -45,12 +52,13 @@ class QueueItem:
 
         std::atomic<QueueItem*> next_item;   // TODO: check if it is possible to hide
         std::atomic<bool> read_flag;  // whether this node has been read or not
+        wasp::cgc::CGCSmartPointer<QueueItem>* smart_pointer;
 
         static QueueItem* create(
             wasp::cgc::ConcurrentGarbageCollector* gc, const item_priority priority, const void* payload
         );
 
-        const char* gc_item_id();
+        void gc_item_id(std::ostream&);
 };
 
 class PriorityQueue{
@@ -58,9 +66,9 @@ class PriorityQueue{
     typedef std::pair<QueueItem*,QueueItem*> priority_pair;
 
     wasp::cgc::ConcurrentGarbageCollector* gc;
-    wasp::cgc::CGCSmartPointer* head;
+    std::atomic<wasp::cgc::CGCSmartPointer<QueueItem>*> head;
 
-    std::atomic<bool> cleanup_running;
+    std::atomic<bool> cleanup_running;  // TODO: check if this block may be safely bypassed
 
     priority_pair search_next(QueueItem*, const item_priority);
 
@@ -68,6 +76,8 @@ class PriorityQueue{
     void cleanup(bool call_gc);  // TODO: this require that all parallel requests are completed which is not
     // quite concurrent think of a smarted cleaning like to switch head earlier (may be
     // the CGCSmartPointer::block_mode method will help)
+
+    QueueItem* acquire_head_for_push(QueueItem*);
 
     public:
         PriorityQueue(wasp::cgc::ConcurrentGarbageCollector*);

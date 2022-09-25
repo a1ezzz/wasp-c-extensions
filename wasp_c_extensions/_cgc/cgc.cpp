@@ -60,8 +60,8 @@ ConcurrentGCItem::~ConcurrentGCItem()
     assert(this->gc_ready_flag == true);
 }
 
-const char* ConcurrentGCItem::gc_item_id(){
-    return NULL;
+void ConcurrentGCItem::gc_item_id(std::ostream& os){
+    os << "<unknown>";
 }
 
 void ConcurrentGCItem::heap_destroy_fn(PointerDestructor* ptr){
@@ -161,17 +161,16 @@ void ConcurrentGarbageCollector::collect()
     this->parallel_gc.fetch_sub(1, std::memory_order_seq_cst);
 }
 
-void ConcurrentGarbageCollector::dump_items_to_clog(){
+void ConcurrentGarbageCollector::dump_items(std::ostream& os){
     ConcurrentGCItem *next_ptr = NULL;  // pointer to a new item to check next
     ConcurrentGCItem *head_ptr = this->detach_head();  // current item to check
     ConcurrentGCItem *tail_ptr = NULL;  // pointer to a new tail
-    const char* gc_item_id = NULL;
 
     this->parallel_gc.fetch_add(1, std::memory_order_seq_cst);
 
     next_ptr = head_ptr;
 
-    std::clog << "=== Dump items of the gc: ===" << std::endl;
+    os << "=== Dump items of the gc: ===" << std::endl;
 
     while(next_ptr){
         if (next_ptr){
@@ -179,10 +178,9 @@ void ConcurrentGarbageCollector::dump_items_to_clog(){
         }
 
         if (! next_ptr->gc_ready_flag){
-            gc_item_id = next_ptr->gc_item_id();
-
-            std::clog << "\t" << ((gc_item_id != NULL) ? gc_item_id : "<unknown item>")  << ": ";
-            std::clog << next_ptr << std::endl;
+            os << "\t";
+            next_ptr->gc_item_id(os);
+            os << ": " << next_ptr << std::endl;
         }
 
         next_ptr = next_ptr->gc_next.load(std::memory_order_seq_cst);
@@ -194,5 +192,5 @@ void ConcurrentGarbageCollector::dump_items_to_clog(){
 
     this->parallel_gc.fetch_sub(1, std::memory_order_seq_cst);
 
-    std::clog << "=== That's all folks ===" << std::endl;
+    os << "=== That's all folks ===" << std::endl;
 }

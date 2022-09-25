@@ -43,6 +43,8 @@ class ResourceSmartLock{
         ResourceSmartLock();
         virtual ~ResourceSmartLock();
 
+        size_t counter();
+
         bool able_to_reset();  // check that a resource is capable to be replaced
 
         bool reset();  // return true, if internal counter/flags are reset. This indicated that resource may be changed
@@ -65,11 +67,12 @@ class SmartPointerBase
         SmartPointerBase();
         virtual ~SmartPointerBase();
 
+        size_t usage_counter();
+
     protected:
         virtual PointerDestructor* acquire();
         virtual void release();
         virtual bool replace(PointerDestructor* new_ptr);
-        virtual bool swap(PointerDestructor* new_ptr);
 };
 
 template <typename T1, typename T2>
@@ -93,7 +96,7 @@ class SmartPointer:
     public:
 
         T* acquire(){
-            return ensure_cast<T*, PointerDestructor*>(SmartPointerBase::acquire());
+            return ensure_cast<T*>(SmartPointerBase::acquire());
         }
 
         void release(){
@@ -102,10 +105,6 @@ class SmartPointer:
 
         bool replace(T* new_ptr){
             return SmartPointerBase::replace(new_ptr);
-        }
-
-        bool swap(T* new_ptr){
-            return SmartPointerBase::swap(new_ptr);
         }
 };
 
@@ -117,6 +116,8 @@ class CGCSmartPointerBase:
     // So it is better to be sure that there will be no request to acquire/replace methods in future when the
     // destroyable method is called.
     // In order to block acquire/replace requests -- there is a "block_mode" method
+
+    // TODO: get rid off replace?
 
     volatile bool block_mode_flag;
     volatile bool destroyable_request_flag;
@@ -141,6 +142,7 @@ class CGCSmartPointerBase:
         virtual ~CGCSmartPointerBase();
 
         void block_mode();
+        size_t releases();
 
         // ConcurrentGCItem method
         virtual void destroyable();  // concurrency with release/replace
@@ -174,7 +176,7 @@ class CGCSmartPointer:
         {}
 
         T* acquire(){
-            return ensure_cast<T*, PointerDestructor*>(this->wrapped_acquire());
+            return ensure_cast<T*>(this->wrapped_acquire());
         }
 
         void release(){
@@ -183,6 +185,23 @@ class CGCSmartPointer:
 
         bool replace(T* new_ptr){
             return this->wrapped_replace(new_ptr);
+        }
+
+        void gc_item_id(std::ostream& os){
+            void* ptr = this->wrapped_acquire();
+            size_t counter = this->usage_counter();
+            size_t releases = this->releases();
+
+            if (ptr){
+                counter -= 1;
+                releases -= 1;
+            }
+
+            os << "CGCSmartPointer object [pointer: " << ptr << ", counter: " << counter << ", releases: " << releases << "]";
+
+            if (ptr){
+                this->wrapped_release();
+            }
         }
 };
 
