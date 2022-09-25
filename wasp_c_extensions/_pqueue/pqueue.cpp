@@ -164,7 +164,8 @@ void PriorityQueue::push(const item_priority priority, const void* payload){
         priority_pair.second, item_ptr, std::memory_order_seq_cst
     ));
 
-    head_ptr->smart_pointer->release();
+    priority_pair.first->smart_pointer->release();
+
 //    this->cleanup(true);
 }
 
@@ -177,8 +178,12 @@ PriorityQueue::priority_pair PriorityQueue::search_next(QueueItem* item, const i
     do {
         item = priority_next;
         priority_next = item->next_item.load(std::memory_order_seq_cst);
-        if (priority_next && priority_next->priority < priority){  // TODO: optional order
-            return std::make_pair(item, priority_next);
+        if (priority_next){
+            if (priority_next->priority < priority){  // TODO: optional order
+                return std::make_pair(item, priority_next);
+            }
+            assert(priority_next->smart_pointer->acquire());
+            item->smart_pointer->release();
         }
     }
     while(priority_next);
@@ -233,6 +238,7 @@ const void* PriorityQueue::pull(){
     if (release){
         head_ptr->release();
     }
+
 //    this->cleanup(true);
     return result;
 }
