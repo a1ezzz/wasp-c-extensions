@@ -34,7 +34,7 @@ PyObject* wasp__pqueue__PriorityQueue_new(PyTypeObject* type, PyObject* args, Py
         return PyErr_NoMemory();
     }
 
-    self->__queue = new PriorityQueue();
+    // self->__queue = new PriorityQueue();
 
     __WASP_DEBUG__("PriorityQueue_Object object was allocated");
     return (PyObject *) self;
@@ -43,7 +43,7 @@ PyObject* wasp__pqueue__PriorityQueue_new(PyTypeObject* type, PyObject* args, Py
 void wasp__pqueue__PriorityQueue_dealloc(PriorityQueue_Object* self){
 
     if (self->__queue){
-        delete (static_cast<PriorityQueue*>(self->__queue));
+        // delete (static_cast<PriorityQueue*>(self->__queue));
         self->__queue = NULL;
     }
 
@@ -59,7 +59,7 @@ PyObject* wasp__pqueue__PriorityQueue_push(PriorityQueue_Object* self, PyObject*
         return NULL;
     }
 
-    static_cast<PriorityQueue*>(self->__queue)->push(new QueueItem(priority, payload));
+    // static_cast<PriorityQueue*>(self->__queue)->push(new QueueItem(priority, payload));
 
     Py_RETURN_TRUE;
 }
