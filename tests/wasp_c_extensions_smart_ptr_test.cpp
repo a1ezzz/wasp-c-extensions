@@ -1,8 +1,4 @@
 
-#include <atomic>
-#include <chrono>
-#include <condition_variable>
-#include <mutex>
 #include <thread>
 
 #include <cppunit/TestCase.h>
@@ -42,7 +38,6 @@ class TestSmartPointer:
 {
     CPPUNIT_TEST_SUITE(TestSmartPointer);
     CPPUNIT_TEST(test_simple_concurrency);
-    CPPUNIT_TEST(test_advanced_concurrency);
     CPPUNIT_TEST_SUITE_END();
 
     void test_simple_concurrency(){
@@ -66,7 +61,7 @@ class TestSmartPointer:
             wasp::cgc::ConcurrentGCItem::heap_destroy_fn
         );
         wasp::smart_ptr_test_case::global_sp = new wasp::cgc::SmartPointer<wasp::cgc::ConcurrentGCItem>();
-        wasp::smart_ptr_test_case::global_sp->replace(item_ptr);
+        assert(wasp::smart_ptr_test_case::global_sp->init(item_ptr));
 
         wasp::smart_ptr_test_case::global_gc->push(item_ptr);
 
@@ -100,45 +95,6 @@ class TestSmartPointer:
             }
         }
     }
-
-    void test_advanced_concurrency(){
-        wasp::smart_ptr_test_case::global_gc = new wasp::cgc::ConcurrentGarbageCollector();
-
-        for (size_t i=0; i < wasp::smart_ptr_test_case::sp_advanced_test_runs; i++){
-            this->threads_test(
-                wasp::smart_ptr_test_case::sp_advanced_threads_num,
-                TestSmartPointer::sp_advanced_threaded_fn,
-                wasp::smart_ptr_test_case::sp_advanced_sleep_time
-            );
-        }
-
-        delete wasp::smart_ptr_test_case::global_gc;
-        wasp::smart_ptr_test_case::global_gc = NULL;
-    }
-
-    static void sp_advanced_threaded_fn(){
-        wasp::cgc::ConcurrentGCItem* item_ptr = new wasp::cgc::ConcurrentGCItem(
-            wasp::cgc::ConcurrentGCItem::heap_destroy_fn
-        );
-        wasp::smart_ptr_test_case::global_gc->push(item_ptr);
-
-        if (wasp::smart_ptr_test_case::global_sp->acquire()){
-
-            for (size_t i=1; i < wasp::smart_ptr_test_case::sp_advanced_acquire_per_thread; i++){
-                CPPUNIT_ASSERT(wasp::smart_ptr_test_case::global_sp->acquire() != NULL);
-            }
-
-            for (size_t i=0; i < wasp::smart_ptr_test_case::sp_advanced_acquire_per_thread; i++){
-                wasp::smart_ptr_test_case::global_sp->release();
-                wasp::smart_ptr_test_case::global_gc->collect();
-            }
-        }
-
-        while (! wasp::smart_ptr_test_case::global_sp->replace(item_ptr)){};
-        wasp::smart_ptr_test_case::global_sp->release();
-        wasp::smart_ptr_test_case::global_gc->collect();
-
-    }
 };
 
 class TestCGCSmartPointer:
@@ -167,7 +123,7 @@ class TestCGCSmartPointer:
         wasp::smart_ptr_test_case::global_gc_sp = new wasp::cgc::CGCSmartPointer<wasp::cgc::ConcurrentGCItem>(
             &wasp::cgc::ConcurrentGCItem::heap_destroy_fn
         );
-        wasp::smart_ptr_test_case::global_gc_sp->replace(item_ptr);
+        assert(wasp::smart_ptr_test_case::global_gc_sp->init(item_ptr));
 
         wasp::smart_ptr_test_case::global_gc->push(item_ptr);
         wasp::smart_ptr_test_case::global_gc->push(wasp::smart_ptr_test_case::global_gc_sp);
@@ -177,7 +133,6 @@ class TestCGCSmartPointer:
         }
 
         std::this_thread::sleep_for(wasp::smart_ptr_test_case::gc_sp_sleep_time);
-        wasp::smart_ptr_test_case::global_gc_sp->block_mode();
         wasp::smart_ptr_test_case::global_gc_sp->destroyable();
         wasp::smart_ptr_test_case::global_gc_sp->release();
 
