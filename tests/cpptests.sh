@@ -1,11 +1,14 @@
 #!/bin/bash -x
 
+# TODO: run with a Makefile
+
 set -eu
 
 ROOT_DIR="$(dirname $0)/.."
 
 CPP_EXEC="${ROOT_DIR}/${1:-cpp-tests-exec}"
 
+TEST_FIXTURES="$(dirname $0)/tests_fixtures.cpp"
 TEST_FILES="$(dirname $0)/*_test.cpp"
 CGC_CPP_FILES="${ROOT_DIR}/wasp_c_extensions/_cgc/cgc.cpp"
 SMART_PTR_CPP_FILES="${ROOT_DIR}/wasp_c_extensions/_cgc/smart_ptr.cpp"
@@ -22,6 +25,7 @@ g++ -Wall \
     ${GDB_FLAGS} \
     -I"${ROOT_DIR}" \
     -I"${ROOT_DIR}/wasp_c_extensions" \
+    ${TEST_FIXTURES} \
     ${TEST_FILES} \
     ${CGC_CPP_FILES} \
     ${SMART_PTR_CPP_FILES} \
