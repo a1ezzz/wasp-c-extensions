@@ -1,6 +1,6 @@
 // wasp_c_extensions/_pqueue/pqueue.hpp
 //
-//Copyright (C) 2022 the wasp-c-extensions authors and contributors
+//Copyright (C) 2023 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
 //
 //This file is part of wasp-c-extensions.
@@ -30,9 +30,10 @@
 
 namespace wasp::pqueue {
 
-typedef long int item_priority;
-
 class QueueItem;
+
+typedef long int item_priority;
+typedef wasp::cgc::CGCSmartPointer<QueueItem> smart_item_pointer;
 
 class QueueItem:
     public wasp::cgc::ConcurrentGCItem
@@ -40,8 +41,7 @@ class QueueItem:
     QueueItem(
         void (*destroy_fn)(PointerDestructor*),
         const item_priority priority,
-        const void* payload,
-        wasp::cgc::CGCSmartPointer<QueueItem>* smart_pointer
+        const void* payload
     ); // private constructor forbids creation on stack
 
     public:
@@ -50,9 +50,9 @@ class QueueItem:
         const item_priority priority;
         const void* payload;
 
-        std::atomic<QueueItem*> next_item;   // TODO: check if it is possible to hide
-        std::atomic<bool> read_flag;  // whether this node has been read or not
-        wasp::cgc::CGCSmartPointer<QueueItem>* smart_pointer;
+        std::atomic<bool> read_flag;  // whether this node has been read or not. TODO: check if it is possible to hide
+        std::atomic<smart_item_pointer*> sorted_next;   // TODO: check if it is possible to hide
+        std::atomic<QueueItem*> raw_next;  // TODO: check if it is possible to hide
 
         static QueueItem* create(
             wasp::cgc::ConcurrentGarbageCollector* gc, const item_priority priority, const void* payload
@@ -63,31 +63,38 @@ class QueueItem:
 
 class PriorityQueue{
 
-    typedef std::pair<QueueItem*,QueueItem*> priority_pair;
-
     wasp::cgc::ConcurrentGarbageCollector* gc;
-    std::atomic<wasp::cgc::CGCSmartPointer<QueueItem>*> head;
+    std::atomic_flag is_merge_and_cleanup_running;
+    std::atomic<QueueItem*> raw_head;  // unsorted items
 
-    std::atomic<bool> cleanup_running;  // TODO: check if this block may be safely bypassed
+    wasp::cgc::SmartDualPointer<QueueItem> sorted_head; // TODO: rename to sorted_head
 
-    priority_pair search_next(QueueItem*, const item_priority);
+    std::atomic<size_t> cache_size_counter;
+    std::atomic<size_t> queue_size_counter;
 
-    bool cleanup_head();
-    void cleanup(bool call_gc);  // TODO: this require that all parallel requests are completed which is not
-    // quite concurrent think of a smarted cleaning like to switch head earlier (may be
-    // the CGCSmartPointer::block_mode method will help)
+    QueueItem* detach_raw_head();  // used by write_flush. Under "lock"!
+    void merge_raw_head(QueueItem*);  // used by write_flush. Under "lock"!
+    QueueItem* sort_raw_items(QueueItem*);  // used by write_flush
 
-    QueueItem* acquire_head_for_push(QueueItem*);
+    void cleanup(bool run_gc=true);
+
+    void read_flush();  // mark everything as read
 
     public:
-        PriorityQueue(wasp::cgc::ConcurrentGarbageCollector*);
+        PriorityQueue(wasp::cgc::ConcurrentGarbageCollector*);  // TODO: add a reverse order!
         virtual ~PriorityQueue();
 
         virtual void push(const item_priority priority, const void* payload);
 
-        virtual const item_priority next(item_priority default_value);
+        virtual const void* pull(const bool probe = false);
 
-        virtual const void* pull(); // do some gc!
+        bool write_flush();
+
+        size_t cache_size();
+
+        size_t queue_size();
+
+        void dump(); // TODO: debug only
 };
 
 };  // namespace wasp::pqueue

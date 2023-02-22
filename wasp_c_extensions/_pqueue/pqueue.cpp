@@ -23,41 +23,33 @@
 using namespace wasp::pqueue;
 using namespace wasp::cgc;
 
-QueueItem::QueueItem(
-    void (*destroy_fn)(PointerDestructor*),
-    const item_priority pr,
-    const void* pa,
-    wasp::cgc::CGCSmartPointer<QueueItem>* sp
-):
-    wasp::cgc::ConcurrentGCItem(destroy_fn),
-    priority(pr),
-    payload(pa),
-    next_item(NULL),
-    read_flag(false),
-    smart_pointer(sp)
-{
-    assert(sp->replace(this));
-}
-
-QueueItem::~QueueItem(){
-    assert(this->read_flag == true);
-}
-
 QueueItem* QueueItem::create(
     wasp::cgc::ConcurrentGarbageCollector* gc, const item_priority priority, const void* payload
 )
 {
-    QueueItem* result = NULL;
-    wasp::cgc::CGCSmartPointer<QueueItem>* smart_pointer = new wasp::cgc::CGCSmartPointer<QueueItem>(
-        wasp::cgc::ConcurrentGCItem::heap_destroy_fn
-    );
-
+    QueueItem* item = NULL;
     assert(gc);
 
-    result = new QueueItem(wasp::cgc::ConcurrentGCItem::heap_destroy_fn, priority, payload, smart_pointer);
-    gc->push(result);
-    gc->push(smart_pointer);
-    return result;
+    item = new QueueItem(wasp::cgc::ConcurrentGCItem::heap_destroy_fn, priority, payload);
+    gc->push(item);
+    return item;
+}
+
+QueueItem::QueueItem(
+    void (*destroy_fn)(PointerDestructor*),
+    const item_priority pr,
+    const void* pa
+):
+    wasp::cgc::ConcurrentGCItem(destroy_fn),
+    priority(pr),
+    payload(pa),
+    read_flag(0),
+    sorted_next(NULL),
+    raw_next(NULL)
+{}
+
+QueueItem::~QueueItem(){
+     assert(this->read_flag.load(std::memory_order_seq_cst) == true);
 }
 
 void QueueItem::gc_item_id(std::ostream& os){
@@ -68,214 +60,374 @@ void QueueItem::gc_item_id(std::ostream& os){
 
 PriorityQueue::PriorityQueue(wasp::cgc::ConcurrentGarbageCollector* _gc):
     gc(_gc),
-    head(new wasp::cgc::CGCSmartPointer<QueueItem>(wasp::cgc::ConcurrentGCItem::heap_destroy_fn)),
-    cleanup_running(false)
+    is_merge_and_cleanup_running(false),
+    raw_head(NULL),
+    // sorted_head(NULL),
+    sorted_head(),
+    cache_size_counter(0),
+    queue_size_counter(0)
 {
+    QueueItem *dummy_head_item_ptr = NULL;
+    smart_item_pointer *dummy_head_smart_ptr = NULL;
+
     assert(gc);
-    gc->push(this->head);
+
+    dummy_head_item_ptr = QueueItem::create(this->gc, 0, this);
+    dummy_head_item_ptr->read_flag.store(true, std::memory_order_seq_cst);
+
+    dummy_head_smart_ptr = new smart_item_pointer(wasp::cgc::ConcurrentGCItem::heap_destroy_fn);
+    assert(dummy_head_smart_ptr->init(dummy_head_item_ptr));
+    this->gc->push(dummy_head_smart_ptr);
+
+    this->sorted_head.setup_next(dummy_head_smart_ptr);
 }
 
 PriorityQueue::~PriorityQueue(){
-    wasp::cgc::CGCSmartPointer<QueueItem> *head_ptr = this->head.load(std::memory_order_seq_cst);
+    smart_item_pointer *head_sp_ptr = NULL;
+    QueueItem *head_ptr = NULL;
 
-    QueueItem *item_ptr = dynamic_cast<QueueItem*>(head_ptr->acquire());
+    assert(this->write_flush());
+    assert(! this->raw_head.load(std::memory_order_seq_cst));
 
-    if (item_ptr){
-        this->cleanup(false);
+    this->read_flush();
+    this->cleanup(false);
 
-        // there may be a single item maximum
-        assert(item_ptr->read_flag.load(std::memory_order_seq_cst));
-        assert(item_ptr->next_item.load(std::memory_order_seq_cst) == NULL);
+    // this->gc->dump_items(std::cout);  // TODO: TEMP!!!
 
-        item_ptr->smart_pointer->block_mode();
-        item_ptr->smart_pointer->destroyable();
-        item_ptr->smart_pointer->release();
+    head_sp_ptr = this->sorted_head.acquire_next();
+    head_ptr = head_sp_ptr->acquire();
+    assert(head_ptr);
+    assert(head_ptr->read_flag.load(std::memory_order_seq_cst));
+    head_sp_ptr->release();
+    head_sp_ptr->release();
+    head_sp_ptr->release();
+    head_sp_ptr->destroyable();
 
-        head_ptr->release();  // release the "acquire" from this destructor
-    }
-
-    head_ptr->block_mode();
-    head_ptr->destroyable();
     this->gc->collect();
 }
 
-QueueItem* PriorityQueue::acquire_head_for_push(QueueItem* item_ptr){
-    wasp::cgc::CGCSmartPointer<QueueItem> *head_smart_ptr = NULL;
-    QueueItem* current_head_ptr = NULL;
-    bool head_found = false;
+void PriorityQueue::push(const item_priority priority, const void* payload){
+    bool appended = false;
+    QueueItem *head_ptr = NULL, *item_ptr = QueueItem::create(this->gc, priority, payload);
 
-    assert(item_ptr);
+    do {
+        head_ptr = this->raw_head.load(std::memory_order_seq_cst);
+        item_ptr->raw_next.store(head_ptr, std::memory_order_seq_cst);
+        appended = this->raw_head.compare_exchange_strong(head_ptr, item_ptr, std::memory_order_seq_cst);
+    }
+    while(! appended);
 
-    while (!head_found){
+    this->cache_size_counter.fetch_add(1, std::memory_order_seq_cst);
 
-        if (current_head_ptr){
-            current_head_ptr->smart_pointer->release();
+    this->write_flush();
+//    this->cleanup();
+}
+
+const void* PriorityQueue::pull(const bool probe){
+    smart_item_pointer *prev_sp_ptr = NULL, *next_sp_ptr = NULL, *head_sp_ptr = NULL;
+    QueueItem *item_sorted_ptr = NULL;
+    bool false_value = false, item_found = false;
+    const void* result = NULL;
+
+    this->write_flush();
+
+    while (! head_sp_ptr){
+        head_sp_ptr = this->sorted_head.acquire_next(); // TODO: there is a concurrency issue between loading a head and acquire call
+    }
+
+    next_sp_ptr = head_sp_ptr;
+
+    while (next_sp_ptr){
+        item_sorted_ptr = next_sp_ptr->acquire();
+        if (prev_sp_ptr){
+            prev_sp_ptr->release();
+            prev_sp_ptr = NULL;
         }
+        assert(item_sorted_ptr);
 
-        head_smart_ptr = this->head.load(std::memory_order_seq_cst);
-        current_head_ptr = head_smart_ptr->acquire();
-
-        if (!current_head_ptr){
-            if (this->head.compare_exchange_strong(head_smart_ptr, item_ptr->smart_pointer, std::memory_order_seq_cst)){
-                head_smart_ptr->block_mode();
-                head_smart_ptr->destroyable();
-                return item_ptr;
-            }
-            continue;  // one more try
-        }
-
-        if (current_head_ptr->priority >= item_ptr->priority){  // TODO: optional order
-            head_found = true;
+        if (probe){
+            item_found = (! item_sorted_ptr->read_flag.load(std::memory_order_seq_cst));
         }
         else {
-            item_ptr->next_item.store(current_head_ptr, std::memory_order_seq_cst);
+            false_value = false;  // compare_exchange_strong may replace value
+            item_found = item_sorted_ptr->read_flag.compare_exchange_strong(
+                false_value, true, std::memory_order_seq_cst
+            );
+        }
 
-            if (this->head.compare_exchange_strong(head_smart_ptr, item_ptr->smart_pointer, std::memory_order_seq_cst)){
-                head_smart_ptr->release();
-                return item_ptr;
+        if (item_found) {
+            result = item_sorted_ptr->payload;
+            next_sp_ptr->release();
+            if (! probe){
+                this->queue_size_counter.fetch_sub(1, std::memory_order_seq_cst);
+//                this->cleanup();
             }
+            head_sp_ptr->release();
+            return result;
+        }
+
+        prev_sp_ptr = next_sp_ptr;
+        next_sp_ptr = item_sorted_ptr->sorted_next.load(std::memory_order_seq_cst);
+    }
+
+    head_sp_ptr->release();
+
+    if (prev_sp_ptr){
+        prev_sp_ptr->release();
+        prev_sp_ptr = NULL;
+    }
+
+//    this->cleanup();
+    return NULL;
+}
+
+bool PriorityQueue::write_flush(){
+    QueueItem *detached_raw_head_ptr = NULL;
+    bool is_mac_running = this->is_merge_and_cleanup_running.test_and_set(std::memory_order_seq_cst);
+
+    if (is_mac_running){
+        return false;
+    }
+
+    if (! this->sorted_head.next_replaceable()){
+        this->is_merge_and_cleanup_running.clear(std::memory_order_seq_cst);
+        return false;
+    }
+
+    detached_raw_head_ptr = this->detach_raw_head();
+    if (detached_raw_head_ptr){
+        this->merge_raw_head(detached_raw_head_ptr);
+    }
+
+    this->is_merge_and_cleanup_running.clear(std::memory_order_seq_cst);
+    return true;
+}
+
+QueueItem* PriorityQueue::detach_raw_head() {
+    QueueItem *head_ptr = NULL, *c_ptr = NULL;
+    bool head_detached = false;
+
+    do {
+        head_ptr = this->raw_head.load(std::memory_order_seq_cst);
+        if (head_ptr){
+            head_detached = this->raw_head.compare_exchange_strong(head_ptr, NULL, std::memory_order_seq_cst);
+        }
+    }
+    while(head_ptr && (!head_detached));
+
+    c_ptr = head_ptr;
+
+    while(c_ptr){
+        c_ptr = c_ptr->raw_next.load(std::memory_order_seq_cst);
+    }
+
+    return head_detached ? head_ptr : NULL;
+}
+
+QueueItem* PriorityQueue::sort_raw_items(QueueItem* unsorted_head){
+    QueueItem *prev_item = NULL, *parent_item = NULL, *item = NULL, *next_item = NULL, *sorted_head = NULL, *sorted_tail = NULL;
+    item_priority item_priority, next_item_priority;
+
+    while(unsorted_head){  // TODO: may be there is a better algorithm than O(n^2)
+
+        item_priority = unsorted_head->priority;
+        item = unsorted_head;
+        prev_item = item;
+        parent_item = item;
+        next_item = item->raw_next.load(std::memory_order_seq_cst);
+
+        while(next_item){
+
+            next_item_priority = next_item->priority;
+            if (next_item_priority > item_priority){  // TODO: reverse order!
+                item_priority = next_item_priority;
+                item = next_item;
+                parent_item = prev_item;
+            }
+
+            prev_item = next_item;
+            next_item = next_item->raw_next.load(std::memory_order_seq_cst);
+        }
+
+        if (unsorted_head == item){
+            unsorted_head = unsorted_head->raw_next.load(std::memory_order_seq_cst);
+        }
+        else {
+            assert(parent_item);
+            parent_item->raw_next.store(
+                item->raw_next.load(std::memory_order_seq_cst), std::memory_order_seq_cst
+            );
+        }
+
+        item->raw_next.store(NULL, std::memory_order_seq_cst);
+
+        if (sorted_tail){
+            sorted_tail->raw_next.store(item, std::memory_order_seq_cst);
+            sorted_tail = item;
+        }
+        else {
+            sorted_head = item;
+            sorted_tail = sorted_head;
         }
     }
 
-    return current_head_ptr;
+    return sorted_head;
 }
 
-void PriorityQueue::push(const item_priority priority, const void* payload){
-    QueueItem *head_ptr = NULL, *null_ptr = NULL, *item_ptr = NULL;
-    PriorityQueue::priority_pair priority_pair;
+void PriorityQueue::merge_raw_head(QueueItem* raw_head) {
+    smart_item_pointer *prev_prev_sp_ptr = NULL, *prev_sp_ptr = NULL, *item_sp_ptr = NULL, *null_sp_ptr = NULL, *next_sp_ptr = NULL;
+    smart_item_pointer* head_sp_ptr = NULL;
+    QueueItem *prev_sorted_ptr = NULL, *next_sorted_ptr = NULL;
 
-    item_ptr = QueueItem::create(this->gc, priority, payload);
+    assert(raw_head);
+    raw_head = this->sort_raw_items(raw_head);
 
-    head_ptr = this->acquire_head_for_push(item_ptr);
-    if(head_ptr == item_ptr){
+    while(raw_head){
+
+        item_sp_ptr = new smart_item_pointer(wasp::cgc::ConcurrentGCItem::heap_destroy_fn);
+        assert(item_sp_ptr->init(raw_head));
+        this->gc->push(item_sp_ptr);
+
+        null_sp_ptr = NULL;
+
+        head_sp_ptr = NULL;
+        while (! head_sp_ptr){
+            head_sp_ptr = this->sorted_head.acquire_next(); // TODO: this should be done only once, since original list is ordered
+        }
+        next_sp_ptr = head_sp_ptr;
+        next_sorted_ptr = next_sp_ptr->acquire();
+        assert(next_sorted_ptr);
+
+        if (raw_head->priority > next_sorted_ptr->priority){  // TODO: reverse order!
+            // replace a head
+            raw_head->sorted_next.store(next_sp_ptr, std::memory_order_seq_cst);
+            assert(this->sorted_head.setup_next(item_sp_ptr));
+            next_sp_ptr->release();
+        }
+        else {
+
+            while (next_sorted_ptr && (! (raw_head->priority > next_sorted_ptr->priority))) {  // TODO: reverse order!
+                prev_prev_sp_ptr = prev_sp_ptr;
+                prev_sp_ptr = next_sp_ptr;
+                prev_sorted_ptr = next_sorted_ptr;
+                next_sorted_ptr = NULL;
+                next_sp_ptr = prev_sorted_ptr->sorted_next.load(std::memory_order_seq_cst);
+                if (next_sp_ptr){
+                    next_sorted_ptr = next_sp_ptr->acquire();
+                    assert(next_sorted_ptr);
+
+                    if (prev_prev_sp_ptr){
+                        prev_prev_sp_ptr->release();
+                        prev_prev_sp_ptr = NULL;
+                    }
+                }
+            }
+
+            raw_head->sorted_next.store(next_sp_ptr, std::memory_order_seq_cst);
+            // prev_sorted_ptr->sorted_next.store(item_sp_ptr, std::memory_order_seq_cst);  // TODO: check what to choose store or compare_exchange?!
+            assert(prev_sorted_ptr->sorted_next.compare_exchange_strong(next_sp_ptr, item_sp_ptr, std::memory_order_seq_cst));
+
+            if (prev_prev_sp_ptr){
+                prev_prev_sp_ptr->release();
+                prev_prev_sp_ptr = NULL;
+            }
+
+            if (prev_sp_ptr){
+                prev_sp_ptr->release();
+                prev_sp_ptr = NULL;
+            }
+
+            if (next_sp_ptr){
+                next_sp_ptr->release();
+                next_sp_ptr = NULL;
+            }
+
+        } // else branch of the if (head->priority > next_sorted_ptr->priority)
+
+        this->queue_size_counter.fetch_add(1, std::memory_order_seq_cst);
+        this->cache_size_counter.fetch_sub(1, std::memory_order_seq_cst);
+
+        raw_head = raw_head->raw_next.load(std::memory_order_seq_cst);
+
+        head_sp_ptr->release();
+    }  // while(raw_head)
+}
+
+void PriorityQueue::cleanup(bool run_gc) {
+    smart_item_pointer *head_sp_ptr = NULL, *next_sp_ptr = NULL;
+    QueueItem *head_sorted_ptr = NULL;
+    bool items_deleted = false, is_mac_running = this->is_merge_and_cleanup_running.test_and_set(std::memory_order_seq_cst);
+
+    if (is_mac_running){
         return;
     }
 
-    // there is a head
-    assert(head_ptr);
+    head_sp_ptr = this->sorted_head.acquire_next();
 
-    priority_pair = std::make_pair(head_ptr, null_ptr);
+    while(head_sp_ptr){
+        head_sorted_ptr = head_sp_ptr->acquire();
+        assert(head_sorted_ptr);
 
-    do {
-        priority_pair = this->search_next(priority_pair.first, priority);  // the second may be null
-        item_ptr->next_item.store(priority_pair.second, std::memory_order_seq_cst);
-    }
-    while (! priority_pair.first->next_item.compare_exchange_strong(
-        priority_pair.second, item_ptr, std::memory_order_seq_cst
-    ));
+        if (head_sorted_ptr->read_flag.load(std::memory_order_seq_cst)){
+            next_sp_ptr = head_sorted_ptr->sorted_next.load(std::memory_order_seq_cst);
+            if (next_sp_ptr){
 
-    priority_pair.first->smart_pointer->release();
+                if (this->sorted_head.setup_next(next_sp_ptr)){
+                    head_sp_ptr->release();
+                    head_sp_ptr->release();
+                    head_sp_ptr->release();
+                    head_sp_ptr->destroyable();
+                    head_sp_ptr = this->sorted_head.acquire_next();
 
-//    this->cleanup(true);
-}
-
-PriorityQueue::priority_pair PriorityQueue::search_next(QueueItem* item, const item_priority priority){
-
-    assert(item);
-
-    QueueItem* priority_next = item;
-
-    do {
-        item = priority_next;
-        priority_next = item->next_item.load(std::memory_order_seq_cst);
-        if (priority_next){
-            if (priority_next->priority < priority){  // TODO: optional order
-                return std::make_pair(item, priority_next);
+                    items_deleted = true;
+                    continue;
+                }
             }
-            assert(priority_next->smart_pointer->acquire());
-            item->smart_pointer->release();
         }
-    }
-    while(priority_next);
 
-    return std::make_pair(item, priority_next);
-}
-
-const item_priority PriorityQueue::next(item_priority default_value){
-    wasp::cgc::CGCSmartPointer<QueueItem> *head_ptr = this->head.load(std::memory_order_seq_cst);
-    QueueItem *next_ptr = dynamic_cast<QueueItem*>(head_ptr->acquire());
-    bool release = false;
-    bool item_found = false;
-    item_priority result;
-
-    while((! item_found) && next_ptr){
-        release = true;
-        if (! next_ptr->read_flag.load(std::memory_order_seq_cst)){
-            item_found = true;
-            result = next_ptr->priority;
-        }
-        else {
-            next_ptr = next_ptr->next_item.load(std::memory_order_seq_cst);
-        }
+        head_sp_ptr->release();
+        head_sp_ptr->release();
+        break;
     }
 
-    if (release){
-        head_ptr->release();
-    }
+    this->is_merge_and_cleanup_running.clear(std::memory_order_seq_cst);
 
-//    this->cleanup(true);
-    return item_found ? result : default_value;
-}
-
-const void* PriorityQueue::pull(){
-    wasp::cgc::CGCSmartPointer<QueueItem> *head_ptr = this->head.load(std::memory_order_seq_cst);
-    QueueItem *next_ptr = dynamic_cast<QueueItem*>(head_ptr->acquire());
-    bool item_found = false;
-    bool release = false;
-    const void* result = NULL;
-
-    while((! item_found) && next_ptr){
-        release = true;
-        if (! next_ptr->read_flag.exchange(true, std::memory_order_seq_cst)){
-            item_found = true;
-            result = next_ptr->payload;
-        }
-        else {
-            next_ptr = next_ptr->next_item.load(std::memory_order_seq_cst);
-        }
-    }
-
-    if (release){
-        head_ptr->release();
-    }
-
-//    this->cleanup(true);
-    return result;
-}
-
-void PriorityQueue::cleanup(bool call_gc){
-    while (this->cleanup_head());
-    if (call_gc){
+    if (run_gc && items_deleted){
         this->gc->collect();
     }
 }
 
-bool PriorityQueue::cleanup_head(){
-    wasp::cgc::CGCSmartPointer<QueueItem> *head_ptr = this->head.load(std::memory_order_seq_cst);
-    QueueItem *item_ptr = NULL, *next_ptr = NULL, *next_after_next_ptr = NULL;
-    bool result = false;
+void PriorityQueue::read_flush(){
+    // TODO: do something
+}
 
-    if (this->cleanup_running.compare_exchange_strong(result, true, std::memory_order_seq_cst)){
+size_t PriorityQueue::cache_size(){
+    return this->cache_size_counter.load(std::memory_order_seq_cst);
+}
 
-        item_ptr = dynamic_cast<QueueItem*>(head_ptr->acquire());
+size_t PriorityQueue::queue_size(){
+    return this->queue_size_counter.load(std::memory_order_seq_cst);
+}
 
-        if (item_ptr->read_flag.load(std::memory_order_seq_cst)){
-            next_ptr = item_ptr->next_item;
-            if (next_ptr && next_ptr->read_flag.load(std::memory_order_seq_cst)){
+void PriorityQueue::dump(){
+    QueueItem* item = NULL;
+    smart_item_pointer *smart_ptr = NULL;
 
-                next_after_next_ptr = next_ptr->next_item;  // TODO: next item of the next_ptr may be in change right now!
-                result = item_ptr->next_item.compare_exchange_strong(next_ptr, next_after_next_ptr);
-
-                if (result){
-                    next_ptr->smart_pointer->block_mode();
-                    next_ptr->smart_pointer->destroyable();
-                    next_ptr->smart_pointer->release();
-                }
-            };
-        }
-        head_ptr->release();
-        this->cleanup_running.store(false, std::memory_order_seq_cst);
-    }
-
-    return result;
+//    std::cout << " === QUEUE DUMP ===" << std::endl;
+//
+//    // smart_ptr = this->sorted_head.load(std::memory_order_seq_cst);
+//    smart_ptr = this->sorted_head2.acquire();
+//    assert(smart_ptr);
+//    item = smart_ptr->acquire();
+//    (assert(item));
+//
+//    while(item){
+//        std::cout << "[[ queue ]] priority: " << item->priority << " payload: " << item->payload << std::endl;
+//        smart_ptr = item->sorted_next.load(std::memory_order_seq_cst);
+//        item = NULL;
+//        if (smart_ptr){
+//            item = smart_ptr->acquire();
+//            (assert(item));
+//        }
+//    }
 }
