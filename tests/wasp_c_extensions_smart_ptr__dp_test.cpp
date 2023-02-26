@@ -19,10 +19,10 @@ class TestSmartDualPointer:
     CPPUNIT_TEST(test_create_setup_destroy);
     CPPUNIT_TEST(test_multiple_setup_seq);
     CPPUNIT_TEST(test_multiple_setup_all);
+//    CPPUNIT_TEST_PARAMETERIZED(test_concurrency, wasp::tests_fixtures::sequence_generator<10>());
     CPPUNIT_TEST_SUITE_END();
 
     static const size_t items_count = 100;
-    static const size_t acquire_threads_count = 50;
     wasp::cgc::ConcurrentGarbageCollector* gc;
     wasp::cgc::ConcurrentGCItem* items[items_count];
     wasp::cgc::CGCSmartPointer<wasp::cgc::ConcurrentGCItem>* smart_ptrs[items_count];
@@ -79,6 +79,50 @@ class TestSmartDualPointer:
         acquire_result->release();
 
         delete dp;
+    }
+
+    void test_concurrency(size_t){
+        wasp::cgc::SmartDualPointer<wasp::cgc::ConcurrentGCItem> *dp =
+            new wasp::cgc::SmartDualPointer<wasp::cgc::ConcurrentGCItem>();
+
+        volatile bool acquire_is_on = true;
+
+        this->start_threads(
+            "acquire_threads",
+            3,
+            [&dp, &acquire_is_on](){TestSmartDualPointer::concurrency_acquire_thread_fn(dp, &acquire_is_on);},
+            true
+        );
+
+        dp->setup_next(this->smart_ptrs[0]);
+        this->resume_threads("acquire_threads");
+
+        // TODO: test it with the parallel setup_next
+        for (size_t i = 1; i < this->items_count; i++){
+            dp->setup_next(this->smart_ptrs[i]);
+            std::this_thread::sleep_for(10ms);
+        }
+
+        acquire_is_on = false;
+        this->join_threads("acquire_threads" );
+
+        delete dp;
+    }
+
+    static void concurrency_acquire_thread_fn(
+        wasp::cgc::SmartDualPointer<wasp::cgc::ConcurrentGCItem>* dp,
+        volatile bool *acquire_is_on
+    ){
+        wasp::cgc::CGCSmartPointer<wasp::cgc::ConcurrentGCItem>* acquire_result = NULL;
+
+        while (*acquire_is_on){
+            do {
+                acquire_result = dp->acquire_next();
+            }
+            while (! acquire_result);
+
+            acquire_result->release();
+        }
     }
 
     public:

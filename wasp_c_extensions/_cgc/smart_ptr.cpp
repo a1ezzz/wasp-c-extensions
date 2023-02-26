@@ -39,10 +39,10 @@ size_t ResourceSmartLock::counter(){
 
 void ResourceSmartLock::resurrect(){
     bool true_v = true;
-    assert(this->dead_flag.compare_exchange_strong(true_v, false
-        , std::memory_order_seq_cst));
+    assert(this->dead_flag.load(std::memory_order_seq_cst));
     this->usage_counter.store(1, std::memory_order_seq_cst);
     this->concurrency_liveness_flag.store(false, std::memory_order_seq_cst);
+    assert(this->dead_flag.compare_exchange_strong(true_v, false, std::memory_order_seq_cst));
 }
 
 bool ResourceSmartLock::acquire(){
@@ -80,6 +80,50 @@ bool ResourceSmartLock::release(){
 bool ResourceSmartLock::is_dead(){
     return this->dead_flag.load(std::memory_order_seq_cst);
 }
+
+RenewableSmartLock::RenewableSmartLock():
+    ResourceSmartLock(),
+    is_renewing(false),
+    renew_lock()
+{}
+
+bool RenewableSmartLock::acquire(){
+    if (this->renew_lock.acquire()){
+        if (this->ResourceSmartLock::acquire()){
+            this->renew_lock.release();
+            return true;
+        }
+        this->renew_lock.release();
+    }
+    return false;
+}
+
+bool RenewableSmartLock::release(){
+    bool result = this->ResourceSmartLock::release();
+
+    if (result){
+        this->renew_lock.release();
+    }
+    return result;
+}
+
+bool RenewableSmartLock::renew(){
+
+    if (this->is_renewing.test_and_set(std::memory_order_seq_cst)){
+        return false;
+    }
+
+    if (! this->renew_lock.is_dead()){
+        this->is_renewing.clear();
+        return false;
+    }
+
+    this->resurrect();
+    this->renew_lock.resurrect();
+
+    this->is_renewing.clear();
+    return true;
+};
 
 SmartPointerBase::SmartPointerBase():
     pointer_lock(),

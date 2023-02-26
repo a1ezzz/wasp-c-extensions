@@ -19,22 +19,44 @@
 //along with wasp-c-extensions.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
+#include <atomic>
 #include <map>
+#include <list>
 #include <thread>
+#include <functional>
+#include <condition_variable>
+#include <mutex>
 
 #include <cppunit/TestCase.h>
 
 namespace wasp::tests_fixtures {
 
+template<size_t count>
+std::list<size_t> sequence_generator(){
+    std::list<size_t> result = sequence_generator<count - 1>();
+    result.push_back(count);
+    return result;
+};
+
+template<>
+std::list<size_t> sequence_generator<0>();
+
 class ThreadsRunner:
     public CppUnit::TestFixture
 {
     typedef std::vector<std::thread*> threads_vector;
-    typedef std::map<std::string, threads_vector> tagged_threads;
+    typedef std::tuple<threads_vector, std::atomic<bool>*, std::mutex*, std::condition_variable*> threads_tuple;
+    typedef std::map<std::string, threads_tuple> tagged_threads;
     tagged_threads threads;
 
+    template<int a>
+    auto get_item(tagged_threads::iterator it){
+        return std::get<a>(it->second);
+    };
+
     public:
-        void start_threads(std::string tag, size_t count, void (*threaded_fn)());
+        void start_threads(std::string tag, size_t count, std::function<void()>threaded_fn, bool delayed_start=false);
+        void resume_threads(std::string tag);
         void join_threads(std::string tag);
 };
 

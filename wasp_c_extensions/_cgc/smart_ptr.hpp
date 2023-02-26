@@ -29,6 +29,8 @@
 
 namespace wasp::cgc {
 
+class RenewableSmartLock;
+
 class ResourceSmartLock{
 
     std::atomic<bool>   dead_flag;                  // marks this resource as unavailable
@@ -36,6 +38,8 @@ class ResourceSmartLock{
     // This counter is for managing acquire-release concurrency
     std::atomic<bool>   concurrency_liveness_flag;  // This flag indicate the "acquire" method that the "release" is
     // on the fly
+
+    friend RenewableSmartLock;
 
     protected:
 
@@ -58,50 +62,17 @@ class ResourceSmartLock{
 class RenewableSmartLock:
     public ResourceSmartLock
 {
-    // TODO: renew and test!
-
     std::atomic_flag is_renewing;
-    std::atomic<bool> is_available;
+    ResourceSmartLock renew_lock;
 
     public:
-        RenewableSmartLock():
-            ResourceSmartLock(),
-            is_renewing(false),
-            is_available(true)
-        {}
+        RenewableSmartLock();
 
-        bool acquire(){
-            if (this->is_available.load(std::memory_order_seq_cst)){
-                return ResourceSmartLock::acquire();
-            }
+        bool acquire();
 
-            return false;
-        }
+        bool release();
 
-        bool release(){
-            bool true_v = true, result = ResourceSmartLock::release();
-
-            if (result){
-                this->is_available.compare_exchange_strong(true_v, false, std::memory_order_seq_cst);
-            }
-            return result;
-        }
-
-        bool renew(){
-            bool false_v = false;
-
-            if (! this->is_available.load(std::memory_order_seq_cst)){
-                if (! this->is_renewing.test_and_set(std::memory_order_seq_cst) && this->is_dead()){
-                    // this removes concurrency
-                    this->resurrect();
-                    this->is_renewing.clear();
-                    assert(this->is_available.compare_exchange_strong(false_v, true, std::memory_order_seq_cst));
-                    return true;
-                }
-            }
-
-            return false;
-        };
+        virtual bool renew();
 };
 
 class SmartPointerBase
@@ -251,6 +222,9 @@ class CGCSmartPointer:
 template <typename T>
 class SmartDualPointer {
 
+    // TODO: check if may be written smarter
+    // TODO: update tests
+
     std::atomic<CGCSmartPointer<T>*> atomic_current_ptr;
     std::atomic<CGCSmartPointer<T>*> atomic_next_ptr;
 
@@ -328,12 +302,12 @@ class SmartDualPointer {
 
             if (this->next_ptr_lock.is_dead()){
 
-            result = this->atomic_next_ptr.compare_exchange_strong(null_ptr, next_ptr, std::memory_order_seq_cst);
-            if(result){
-                assert(this->next_ptr_lock.renew());
-                this->current_ptr_lock.release();
-                this->switch_over();
-            }
+                result = this->atomic_next_ptr.compare_exchange_strong(null_ptr, next_ptr, std::memory_order_seq_cst);
+                if(result){
+                    assert(this->next_ptr_lock.renew());
+                    this->current_ptr_lock.release();
+                    this->switch_over();
+                }
                 return true;
             }
 
@@ -344,32 +318,34 @@ class SmartDualPointer {
         void switch_over(){
             CGCSmartPointer<T> *curr_item = NULL, *next_item = NULL;
 
-            if (! this->is_switching.test_and_set(std::memory_order_seq_cst)){
-
-                if (this->current_ptr_lock.is_dead()){
-
-                    if (this->next_ptr_lock.acquire()){
-                        next_item = this->atomic_next_ptr.load(std::memory_order_seq_cst);
-                        curr_item = this->atomic_current_ptr.load(std::memory_order_seq_cst);
-
-                        assert(
-                            this->atomic_current_ptr.compare_exchange_strong(curr_item, next_item, std::memory_order_seq_cst)
-                        );
-
-                        this->current_ptr_lock.renew();
-                        this->next_ptr_lock.release();
-                        this->next_ptr_lock.release();
-
-                        this->release_prev(curr_item, next_item);
-                    }
-                }
-
-                if (this->next_ptr_lock.is_dead()){
-                        this->atomic_next_ptr.store(NULL, std::memory_order_seq_cst);
-                }
-
-                this->is_switching.clear();
+            if (this->is_switching.test_and_set(std::memory_order_seq_cst)){
+                // parallel switching is running
+                return;
             }
+
+            if (this->current_ptr_lock.is_dead()){
+
+                if (this->next_ptr_lock.acquire()){
+                    next_item = this->atomic_next_ptr.load(std::memory_order_seq_cst);
+                    curr_item = this->atomic_current_ptr.load(std::memory_order_seq_cst);
+
+                    assert(
+                        this->atomic_current_ptr.compare_exchange_strong(curr_item, next_item, std::memory_order_seq_cst)
+                    );
+
+                    this->current_ptr_lock.renew();
+                    this->next_ptr_lock.release();
+                    this->next_ptr_lock.release();
+
+                    this->release_prev(curr_item, next_item);
+                }
+            }
+
+            if (this->next_ptr_lock.is_dead()){
+                    this->atomic_next_ptr.store(NULL, std::memory_order_seq_cst);
+            }
+
+            this->is_switching.clear();
         }
 
         bool next_replaceable(){
