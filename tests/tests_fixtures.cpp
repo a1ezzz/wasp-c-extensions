@@ -44,7 +44,7 @@ void ThreadsRunner::start_threads(std::string tag, size_t count, std::function<v
         mutex = new std::mutex();
         cv = new std::condition_variable();
 
-        wrapped_function = [&flag, &mutex, &cv, &threaded_fn](){
+        wrapped_function = [flag, mutex, cv, threaded_fn](){
             while (! flag->load(std::memory_order_seq_cst)){
                 std::unique_lock<std::mutex> lock(*mutex);
                 cv->wait(lock);
@@ -54,7 +54,7 @@ void ThreadsRunner::start_threads(std::string tag, size_t count, std::function<v
     }
 
     for (size_t i = 0; i < count; i++){
-        _threads.push_back(new std::thread(threaded_fn));
+        _threads.push_back(new std::thread(wrapped_function));
     }
 
     this->threads.insert(std::make_pair(tag, threads_tuple(_threads, flag, mutex, cv)));

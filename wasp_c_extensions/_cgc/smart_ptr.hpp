@@ -1,6 +1,6 @@
 // wasp_c_extensions/_cgc/smart_ptr.hpp
 //
-//Copyright (C) 2022 the wasp-c-extensions authors and contributors
+//Copyright (C) 2022-2023 the wasp-c-extensions authors and contributors
 //<see AUTHORS file>
 //
 //This file is part of wasp-c-extensions.
@@ -29,8 +29,6 @@
 
 namespace wasp::cgc {
 
-class RenewableSmartLock;
-
 class ResourceSmartLock{
 
     std::atomic<bool>   dead_flag;                  // marks this resource as unavailable
@@ -39,40 +37,19 @@ class ResourceSmartLock{
     std::atomic<bool>   concurrency_liveness_flag;  // This flag indicate the "acquire" method that the "release" is
     // on the fly
 
-    friend RenewableSmartLock;
-
-    protected:
-
-        void resurrect();  // is not thread-safe
-
     public:
         ResourceSmartLock();
         virtual ~ResourceSmartLock();
 
+        virtual bool acquire();  // acknowledge that a shared resource is requested
+        // (returns true if the resource is available)
+
+        virtual bool release();  // acknowledge that a shared resource is no longer in use. For every successful
+        // "acquire" a single release must be called. (returns true if the resource is ready to be destroyed)
+
         size_t counter();
 
-        virtual bool acquire();  // acknowledge that a shared resource is requested (returns true if the resource is available)
-
-        virtual bool release();  // acknowledge that a shared resource is no longer in use. For every successful "acquire"
-        // a single release must be called. (returns true if the resource is ready to be destroyed)
-
         bool is_dead();
-};
-
-class RenewableSmartLock:
-    public ResourceSmartLock
-{
-    std::atomic_flag is_renewing;
-    ResourceSmartLock renew_lock;
-
-    public:
-        RenewableSmartLock();
-
-        bool acquire();
-
-        bool release();
-
-        virtual bool renew();
 };
 
 class SmartPointerBase
@@ -123,87 +100,62 @@ class SmartPointer:
         }
 };
 
-class CGCSmartPointerBase:
-    public ConcurrentGCItem
-{
-    volatile bool destroyable_request_flag;
-    std::atomic<size_t> pending_releases;  // just a counter
-
-    void check_and_fall();
-
-    protected:
-
-        virtual PointerDestructor* smart_acquire() = 0;
-        virtual void smart_release() = 0;
-        virtual bool smart_init(PointerDestructor* new_ptr) = 0;
-        virtual bool smart_is_dead() = 0;
-
-        // wrapped SmartPointer methods
-        PointerDestructor* wrapped_acquire();
-        void wrapped_release();
-        bool wrapped_init(PointerDestructor* new_ptr);
-
-    public:
-        CGCSmartPointerBase(void (*destroy_fn)(PointerDestructor*));
-        virtual ~CGCSmartPointerBase();
-
-        size_t releases();
-
-        // ConcurrentGCItem method
-        virtual void destroyable();  // concurrency with release
-};
-
-
 template <typename T>
 class CGCSmartPointer:
-    public SmartPointer<T>,
-    public CGCSmartPointerBase
+    public ConcurrentGCItem
 {
-    protected:
+    SmartPointer<T>     smart_ptr;
+    std::atomic<size_t> pending_releases;  // just a counter, but more accurate then SmartPointer since SmartPointer
+    // may be overlapped/overflowed
 
-        PointerDestructor* smart_acquire(){
-            return SmartPointer<T>::acquire();
-        }
-
-        void smart_release(){
-            SmartPointer<T>::release();
-        }
-
-        bool smart_init(PointerDestructor* new_ptr){
-            return SmartPointer<T>::init(dynamic_cast<T*>(new_ptr));
-        }
-
-        bool smart_is_dead(){
-            return SmartPointer<T>::is_dead();
-        }
+    virtual void destroyable(){  // just to hide the ConcurrentGCItem method
+        this->ConcurrentGCItem::destroyable();
+    }
 
     public:
 
         CGCSmartPointer(void (*destroy_fn)(PointerDestructor*)):
-            SmartPointer<T>(),
-            CGCSmartPointerBase(destroy_fn)
+            ConcurrentGCItem(destroy_fn)
         {}
 
         virtual ~CGCSmartPointer(){
-            assert(this->smart_is_dead());
+            assert(this->smart_ptr.is_dead());
         }
 
         T* acquire(){
-            return ensure_cast<T*>(this->wrapped_acquire());
+            T* result = NULL;
+            this->pending_releases.fetch_add(1, std::memory_order_seq_cst);
+
+            result = this->smart_ptr.acquire();
+            if (result){
+                return result;
+            }
+
+            this->pending_releases.fetch_sub(1, std::memory_order_seq_cst);
+            return NULL;
         }
 
         void release(){
-            this->wrapped_release();
+            this->smart_ptr.release();
+            this->pending_releases.fetch_sub(1, std::memory_order_seq_cst);
+
+            if (this->smart_ptr.is_dead()){
+                this->destroyable();
+            }
         };
 
         bool init(T* new_ptr){
-            return this->wrapped_init(new_ptr);
+            if (this->smart_ptr.init(new_ptr)){
+                this->pending_releases.fetch_add(1, std::memory_order_seq_cst);
+                return true;
+            }
+            return false;
         }
 
         void gc_item_id(std::ostream& os){
-            void* ptr = this->wrapped_acquire();
-            size_t counter = this->usage_counter();
-            size_t releases = this->releases();
+            void* ptr = this->acquire();
+            size_t counter = this->smart_ptr.usage_counter();
+            size_t releases = this->pending_releases.load(std::memory_order_seq_cst);
 
             if (ptr){
                 counter -= 1;
@@ -214,143 +166,8 @@ class CGCSmartPointer:
             os << ", counter: " << counter << ", releases: " << releases << "]";
 
             if (ptr){
-                this->wrapped_release();
+                this->release();
             }
-        }
-};
-
-template <typename T>
-class SmartDualPointer {
-
-    // TODO: check if may be written smarter
-    // TODO: update tests
-
-    std::atomic<CGCSmartPointer<T>*> atomic_current_ptr;
-    std::atomic<CGCSmartPointer<T>*> atomic_next_ptr;
-
-    RenewableSmartLock current_ptr_lock;
-    RenewableSmartLock next_ptr_lock;
-
-    std::atomic_flag is_switching;
-
-    protected:
-        virtual void release_prev(CGCSmartPointer<T>* prev_ptr, CGCSmartPointer<T>* curr_ptr){
-            assert(prev_ptr);
-            prev_ptr->release();
-        }
-
-    public:
-        SmartDualPointer():
-            atomic_current_ptr(NULL),
-            atomic_next_ptr(NULL),
-            current_ptr_lock(),
-            next_ptr_lock(),
-            is_switching(false)
-        {
-            this->current_ptr_lock.release();  // since the lock is acquired by default
-            this->next_ptr_lock.release();  // since the lock is acquired by default
-        }
-
-        virtual ~SmartDualPointer(){
-            // TODO: check!
-            CGCSmartPointer<T> *smart_current_ptr = NULL;
-
-            assert(! this->atomic_next_ptr.load(std::memory_order_seq_cst));
-
-            if (! current_ptr_lock.is_dead()){
-                assert(current_ptr_lock.release());
-                smart_current_ptr = this->atomic_current_ptr.load(std::memory_order_seq_cst);
-                assert(smart_current_ptr);
-                smart_current_ptr->release();
-            }
-        }
-
-        CGCSmartPointer<T>* acquire_next(){
-            CGCSmartPointer<T> *result = NULL;
-
-            if (this->next_ptr_lock.acquire()){
-                result = this->atomic_next_ptr.load(std::memory_order_seq_cst);
-                assert(result);
-                assert(result->acquire());
-                this->next_ptr_lock.release();
-                this->switch_over();
-            }
-            else if (this->current_ptr_lock.acquire()){
-                result = this->atomic_current_ptr.load(std::memory_order_seq_cst);
-                assert(result);
-                assert(result->acquire());
-                this->current_ptr_lock.release();
-                this->switch_over();
-            }
-            return result;
-        }
-
-        bool setup_next(CGCSmartPointer<T>* next_ptr){
-            bool result = false;
-            CGCSmartPointer<T> *null_ptr = NULL, *acquired_item = NULL;
-
-            assert(next_ptr);
-            assert(next_ptr->acquire());
-
-            if (this->atomic_current_ptr.compare_exchange_strong(null_ptr, next_ptr, std::memory_order_seq_cst)){
-                // this is the first call of the setup_next method
-                assert(this->current_ptr_lock.renew());
-                return true;
-            }
-
-            null_ptr = NULL;  // must be set because of the previous compare_exchange_strong call
-
-            if (this->next_ptr_lock.is_dead()){
-
-                result = this->atomic_next_ptr.compare_exchange_strong(null_ptr, next_ptr, std::memory_order_seq_cst);
-                if(result){
-                    assert(this->next_ptr_lock.renew());
-                    this->current_ptr_lock.release();
-                    this->switch_over();
-                }
-                return true;
-            }
-
-            next_ptr->release();
-            return false;
-        }
-
-        void switch_over(){
-            CGCSmartPointer<T> *curr_item = NULL, *next_item = NULL;
-
-            if (this->is_switching.test_and_set(std::memory_order_seq_cst)){
-                // parallel switching is running
-                return;
-            }
-
-            if (this->current_ptr_lock.is_dead()){
-
-                if (this->next_ptr_lock.acquire()){
-                    next_item = this->atomic_next_ptr.load(std::memory_order_seq_cst);
-                    curr_item = this->atomic_current_ptr.load(std::memory_order_seq_cst);
-
-                    assert(
-                        this->atomic_current_ptr.compare_exchange_strong(curr_item, next_item, std::memory_order_seq_cst)
-                    );
-
-                    this->current_ptr_lock.renew();
-                    this->next_ptr_lock.release();
-                    this->next_ptr_lock.release();
-
-                    this->release_prev(curr_item, next_item);
-                }
-            }
-
-            if (this->next_ptr_lock.is_dead()){
-                    this->atomic_next_ptr.store(NULL, std::memory_order_seq_cst);
-            }
-
-            this->is_switching.clear();
-        }
-
-        bool next_replaceable(){
-            // TODO: looks like crap; remove this method
-            return this->next_ptr_lock.is_dead();
         }
 };
 
