@@ -80,7 +80,7 @@ pipeline {
           sh "mkdir ${WORKSPACE}@tmp/coverage"
           sh "cp -rf ${WORKSPACE}/wasp_c_extensions ${WORKSPACE}@tmp/coverage"
           sh "cp -rf ${WORKSPACE}/tests  ${WORKSPACE}@tmp/coverage"
-          sh "cd ${WORKSPACE}@tmp/coverage && ./tests/cpptests.sh"
+          sh "cd ${WORKSPACE}@tmp/coverage/tests && make && make test"
 
           withCredentials([
             string(credentialsId: 'coveralls-wasp-c-extensions-token', variable: 'COVERALLS_REPO_TOKEN'),
