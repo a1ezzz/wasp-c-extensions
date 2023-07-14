@@ -12,12 +12,16 @@ test_hpp_fixtures := ${test_dir}/tests_fixtures.hpp
 test_cpp_files :=    $(wildcard ${test_dir}/*.cpp)
 test_obj_files :=    $(patsubst %.cpp, %.o, $(test_cpp_files))
 
-CC =             g++
-COVERAGE_FLAGS = -fprofile-filter-files=.*\.cpp --coverage -fprofile-update=atomic
-CFLAGS =         ${COVERAGE_FLAGS} ${GDB_FLAGS} -I$(root_dir) -I$(wasp_cpp_dir)
-LDFLAGS =        -lcppunit -lpthread
+test_cov_files = $(wildcard ${test_dir}/*.gcno) $(wildcard ${test_dir}/*.gcda)
+
+CC :=             g++
+COVERAGE_FLAGS := -fprofile-filter-files=.*\.cpp --coverage -fprofile-update=atomic
+CFLAGS :=         ${COVERAGE_FLAGS} ${GDB_FLAGS} -I$(root_dir) -I$(wasp_cpp_dir)
+LDFLAGS :=        -lcppunit -lpthread
 
 abs_path_test_exec_runner := $(realpath $(test_exec_runner))
+
+.PHONY: all test clean_objects clean_cov_files clean
 
 %.o : %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -31,4 +35,11 @@ all: $(test_exec_runner)
 test:
 	cd $(root_dir); $(abs_path_test_exec_runner)
 
-# clean:
+clean_objects:
+	rm -f $(test_obj_files)
+
+clean_cov_files:
+	rm -f $(test_cov_files)
+
+clean: clean_objects clean_cov_files
+	rm -f $(test_exec_runner)
