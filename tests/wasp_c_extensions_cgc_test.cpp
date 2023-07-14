@@ -11,17 +11,12 @@
 #include "wasp_c_extensions/_cgc/cgc.hpp"
 #include "wasp_c_extensions/_cgc/smart_ptr.hpp"
 
-namespace wasp::cgc_test_case {
-    const size_t gc_threads_num = 1024;
-    const size_t gc_items_per_thread = 10240;
-    wasp::cgc::ConcurrentGarbageCollector* global_gc = NULL;
+#include "tests/tests_fixtures.hpp"
 
-    std::atomic<bool> start_event_flag(false);
-    std::condition_variable start_event_cv;
-    std::mutex start_event_mutex;
+namespace wasp::cgc_test_case {
 
 class TestWaspCGCTest:
-    public CppUnit::TestFixture
+    public wasp::tests_fixtures::ThreadsRunner
 {
 
     CPPUNIT_TEST_SUITE(TestWaspCGCTest);
@@ -64,50 +59,40 @@ class TestWaspCGCTest:
     }
 
     void test_gc_concurrent_push(){
-        std::thread* threads[wasp::cgc_test_case::gc_threads_num];
+        wasp::cgc::ConcurrentGarbageCollector* gc = new wasp::cgc::ConcurrentGarbageCollector();
 
-        wasp::cgc_test_case::global_gc = new wasp::cgc::ConcurrentGarbageCollector();
+        this->start_threads(
+            "push_threads",
+            1024,
+            [gc](){
+                TestWaspCGCTest::push_threaded_fn(10240, gc);
+            },
+            true
+        );
 
-        for (size_t i=0; i < wasp::cgc_test_case::gc_threads_num; i++){
-            threads[i] = new std::thread(TestWaspCGCTest::push_threaded_fn);
-        }
+        this->resume_threads("push_threads");
 
-        wasp::cgc_test_case::start_event_flag.store(true, std::memory_order_seq_cst);
-
-        {
-            std::lock_guard<std::mutex> lock(wasp::cgc_test_case::start_event_mutex);
-            wasp::cgc_test_case::start_event_cv.notify_all();
-        }
-
-        for (size_t i=0; i < wasp::cgc_test_case::gc_threads_num; i++){
-            threads[i]->join();
-            delete threads[i];
-        }
-
-        delete wasp::cgc_test_case::global_gc;
-        wasp::cgc_test_case::global_gc = NULL;
+        this->join_threads("push_threads");
+        delete gc;
     }
 
-    static void push_threaded_fn(){
-        wasp::cgc::ConcurrentGCItem* items[wasp::cgc_test_case::gc_items_per_thread];
+    static void push_threaded_fn(
+        const size_t gc_items_per_thread, wasp::cgc::ConcurrentGarbageCollector* gc
+    ){
+        wasp::cgc::ConcurrentGCItem* items[gc_items_per_thread];
 
-        while (! wasp::cgc_test_case::start_event_flag.load(std::memory_order_seq_cst)){
-            std::unique_lock<std::mutex> lock(wasp::cgc_test_case::start_event_mutex);
-            wasp::cgc_test_case::start_event_cv.wait(lock);
-        }
-
-        for (size_t i=0; i < wasp::cgc_test_case::gc_items_per_thread; i++){
+        for (size_t i=0; i < gc_items_per_thread; i++){
             items[i] = new wasp::cgc::ConcurrentGCItem(
                 wasp::cgc::ConcurrentGCItem::heap_destroy_fn
             );
-            wasp::cgc_test_case::global_gc->push(items[i]);
+            gc->push(items[i]);
         }
 
-        for (size_t i=0; i < wasp::cgc_test_case::gc_items_per_thread; i++){
+        for (size_t i=0; i < gc_items_per_thread; i++){
             items[i]->destroyable();
         }
 
-        wasp::cgc_test_case::global_gc->collect();
+        gc->collect();
     }
 };
 
