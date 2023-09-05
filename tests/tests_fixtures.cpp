@@ -104,3 +104,26 @@ void ThreadsRunner::join_threads(std::string tag){
 
     this->threads.erase(it);
 };
+
+GCRunner::GCRunner():
+    cgc(NULL)
+{}
+
+GCRunner::~GCRunner()
+{
+    assert(this->cgc == NULL);
+}
+
+wasp::cgc::ConcurrentGarbageCollector* GCRunner::collector(){
+    return this->cgc;
+}
+
+void GCRunner::setUp(){
+    assert(this->cgc == NULL);
+    this->cgc = new wasp::cgc::ConcurrentGarbageCollector();
+}
+
+void GCRunner::tearDown(){
+    delete this->cgc;
+    this->cgc = NULL;
+}

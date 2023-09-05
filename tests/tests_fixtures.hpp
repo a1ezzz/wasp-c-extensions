@@ -29,6 +29,8 @@
 
 #include <cppunit/TestCase.h>
 
+#include "wasp_c_extensions/_cgc/cgc.hpp"
+
 namespace wasp::tests_fixtures {
 
 template<size_t count>
@@ -41,8 +43,7 @@ std::list<size_t> sequence_generator(){
 template<>
 std::list<size_t> sequence_generator<0>();
 
-class ThreadsRunner:
-    public CppUnit::TestFixture
+class ThreadsRunner
 {
     typedef std::vector<std::thread*> threads_vector;
     typedef std::tuple<threads_vector, std::atomic<bool>*, std::mutex*, std::condition_variable*> threads_tuple;
@@ -58,6 +59,45 @@ class ThreadsRunner:
         void start_threads(std::string tag, size_t count, std::function<void()>threaded_fn, bool delayed_start=false);
         void resume_threads(std::string tag);
         void join_threads(std::string tag);
+};
+
+class ThreadsRunnerFixture:
+    public ThreadsRunner,
+    public CppUnit::TestFixture
+{};
+
+class GCRunner
+{
+    wasp::cgc::ConcurrentGarbageCollector* cgc;
+
+    public:
+
+        GCRunner();
+        virtual ~GCRunner();
+
+        wasp::cgc::ConcurrentGarbageCollector* collector();
+
+        void setUp();
+        void tearDown();
+};
+
+class GCRunnerFixture:
+    public GCRunner,
+    public CppUnit::TestFixture
+{
+    public:
+    void setUp(){GCRunner::setUp();};
+    void tearDown(){GCRunner::tearDown();};
+};
+
+class GCThreadsRunnerFixture:
+    public ThreadsRunner,
+    public GCRunner,
+    public CppUnit::TestFixture
+{
+    public:
+    void setUp(){GCRunner::setUp();};
+    void tearDown(){GCRunner::tearDown();};
 };
 
 };  // wasp::tests_fixtures
