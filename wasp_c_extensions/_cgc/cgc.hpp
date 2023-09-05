@@ -74,6 +74,7 @@ class ConcurrentGCItem:
     public PointerDestructor
 {
     volatile bool gc_ready_flag;  // There is only one lazy switch false->true, so it may not be atomic
+    volatile ConcurrentGarbageCollector* gc;  // There is only one lazy switch, so it may not be atomic
     std::atomic<ConcurrentGCItem*> gc_next;
 
     friend ConcurrentGarbageCollector;
@@ -89,6 +90,8 @@ class ConcurrentGCItem:
         static void stack_destroy_fn(PointerDestructor*);
 
         virtual void gc_item_id(std::ostream&);
+
+        bool orphaned();
 };
 
 };  // namespace wasp::cgc

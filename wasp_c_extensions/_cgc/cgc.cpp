@@ -47,6 +47,7 @@ void PointerDestructor::destroy(PointerDestructor* item_ptr){
 ConcurrentGCItem::ConcurrentGCItem(void (*fn)(PointerDestructor*)):
     PointerDestructor(fn),
     gc_ready_flag(false),
+    gc(NULL),
     gc_next(NULL)
 {}
 
@@ -62,6 +63,11 @@ ConcurrentGCItem::~ConcurrentGCItem()
 
 void ConcurrentGCItem::gc_item_id(std::ostream& os){
     os << "<unknown>";
+}
+
+bool ConcurrentGCItem::orphaned()
+{
+    return this->gc == NULL;
 }
 
 void ConcurrentGCItem::heap_destroy_fn(PointerDestructor* ptr){
@@ -99,6 +105,8 @@ void ConcurrentGarbageCollector::push(ConcurrentGCItem* item_ptr){
 
     while (! this->__push(item_ptr, item_ptr));
     this->count.fetch_add(1, std::memory_order_seq_cst);
+
+    item_ptr->gc = this;
 }
 
 bool ConcurrentGarbageCollector::__push(ConcurrentGCItem* new_head_ptr, ConcurrentGCItem* new_tail_ptr)
