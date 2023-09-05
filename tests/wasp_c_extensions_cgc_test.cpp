@@ -35,6 +35,7 @@ class TestWaspCGCTest:
         wasp::cgc::ConcurrentGCItem* item_ptr = new wasp::cgc::ConcurrentGCItem(
             wasp::cgc::ConcurrentGCItem::heap_destroy_fn
         );
+        CPPUNIT_ASSERT(item_ptr->orphaned() == true);
         CPPUNIT_ASSERT_THROW(new wasp::cgc::ConcurrentGCItem(NULL), wasp::cgc::NullPointerException);
         item_ptr->destroyable();
         wasp::cgc::ConcurrentGCItem::heap_destroy_fn(item_ptr);
@@ -86,6 +87,7 @@ class TestWaspCGCTest:
                 wasp::cgc::ConcurrentGCItem::heap_destroy_fn
             );
             gc->push(items[i]);
+            CPPUNIT_ASSERT(items[i]->orphaned() == false);
         }
 
         for (size_t i=0; i < gc_items_per_thread; i++){
