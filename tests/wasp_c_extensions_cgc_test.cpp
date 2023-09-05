@@ -16,7 +16,7 @@
 namespace wasp::cgc_test_case {
 
 class TestWaspCGCTest:
-    public wasp::tests_fixtures::ThreadsRunner
+    public wasp::tests_fixtures::ThreadsRunnerFixture
 {
 
     CPPUNIT_TEST_SUITE(TestWaspCGCTest);

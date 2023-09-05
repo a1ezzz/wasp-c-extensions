@@ -14,7 +14,7 @@ using namespace std::chrono_literals;
 namespace wasp::smart_ptr_test_case {
 
 class TestSmartPointer:
-    public wasp::tests_fixtures::ThreadsRunner
+    public wasp::tests_fixtures::ThreadsRunnerFixture
 {
     CPPUNIT_TEST_SUITE(TestSmartPointer);
     CPPUNIT_TEST(test_plain);
@@ -81,7 +81,7 @@ class TestSmartPointer:
 };
 
 class TestCGCSmartPointer:
-    public wasp::tests_fixtures::ThreadsRunner
+    public wasp::tests_fixtures::ThreadsRunnerFixture
 {
     CPPUNIT_TEST_SUITE(TestCGCSmartPointer);
     CPPUNIT_TEST_PARAMETERIZED(test_concurrency, wasp::tests_fixtures::sequence_generator<50>());
