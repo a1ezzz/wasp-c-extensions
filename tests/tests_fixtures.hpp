@@ -81,7 +81,7 @@ class GCRunner
         void tearDown();
 };
 
-class GCRunnerFixture:
+    class GCRunnerFixture:
     public GCRunner,
     public CppUnit::TestFixture
 {
