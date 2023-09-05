@@ -81,15 +81,13 @@ class TestSmartPointer:
 };
 
 class TestCGCSmartPointer:
-    public wasp::tests_fixtures::ThreadsRunnerFixture
+    public wasp::tests_fixtures::GCThreadsRunnerFixture
 {
     CPPUNIT_TEST_SUITE(TestCGCSmartPointer);
     CPPUNIT_TEST_PARAMETERIZED(test_concurrency, wasp::tests_fixtures::sequence_generator<50>());
     CPPUNIT_TEST_SUITE_END();
 
     void test_concurrency(size_t){
-        wasp::cgc::ConcurrentGarbageCollector* gc = new wasp::cgc::ConcurrentGarbageCollector();
-
         wasp::cgc::ConcurrentGCItem* item_ptr = new wasp::cgc::ConcurrentGCItem(
             wasp::cgc::ConcurrentGCItem::heap_destroy_fn
         );
@@ -100,15 +98,15 @@ class TestCGCSmartPointer:
         );
         CPPUNIT_ASSERT(gc_smart_ptr->init(item_ptr));
 
-        gc->push(item_ptr);
-        gc->push(gc_smart_ptr);
+        this->collector()->push(item_ptr);
+        this->collector()->push(gc_smart_ptr);
 
         this->start_threads(
             "acquire_threads",
             1000,
-            [gc_smart_ptr, gc](){
+            [gc_smart_ptr, this](){
                 TestCGCSmartPointer::acquire_release_thread_fn(gc_smart_ptr, 10);
-                gc->collect();
+                this->collector()->collect();
             }
         );
 
@@ -116,7 +114,6 @@ class TestCGCSmartPointer:
         gc_smart_ptr->release();
 
         this->join_threads("acquire_threads");
-        delete gc;
     }
 
     static void acquire_release_thread_fn(
