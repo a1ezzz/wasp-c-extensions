@@ -1,9 +1,18 @@
 
 root_dir :=       ..
 wasp_cpp_dir :=   ${root_dir}/wasp_c_extensions
-wasp_cpp_files := ${wasp_cpp_dir}/_cgc/cgc.cpp ${wasp_cpp_dir}/_cgc/smart_ptr.cpp \
-	${wasp_cpp_dir}/_cgc/smart_list.cpp ${wasp_cpp_dir}/_cmcqueue/cmcqueue.cpp \
-	${wasp_cpp_dir}/_ev_loop/ev_loop.cpp ${wasp_cpp_dir}/_threads/event.cpp
+wasp_cpp_files := \
+	${wasp_cpp_dir}/_cgc/cgc.cpp \
+	${wasp_cpp_dir}/_cgc/glider_ptr.cpp \
+	${wasp_cpp_dir}/_cgc/smart_ptr.cpp \
+	${wasp_cpp_dir}/_cgc/smart_list.cpp \
+	\
+	${wasp_cpp_dir}/_cmcqueue/cmcqueue.cpp \
+	\
+	${wasp_cpp_dir}/_ev_loop/ev_loop.cpp \
+	\
+	${wasp_cpp_dir}/_threads/event.cpp
+
 wasp_hpp_files := $(wasp_cpp_files:.cpp=.hpp)
 
 test_dir :=          ${root_dir}/tests
@@ -16,7 +25,7 @@ test_cov_files = $(wildcard ${test_dir}/*.gcno) $(wildcard ${test_dir}/*.gcda)
 
 CC :=             g++
 COVERAGE_FLAGS := -fprofile-filter-files=.*\.cpp --coverage -fprofile-update=atomic
-CFLAGS :=         ${COVERAGE_FLAGS} ${GDB_FLAGS} -I$(root_dir) -I$(wasp_cpp_dir)
+CFLAGS :=         ${COVERAGE_FLAGS} ${GDB_FLAGS} -I$(root_dir) -I$(wasp_cpp_dir) -Wall
 LDFLAGS :=        -lcppunit -lpthread
 
 abs_path_test_exec_runner := $(realpath $(test_exec_runner))

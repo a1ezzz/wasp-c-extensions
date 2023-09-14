@@ -35,9 +35,9 @@ void Event::clear(){
 }
 
 void Event::set(){
-    bool true_v = true, false_v = false;
+    bool false_v = false;
 
-    if (this->__is_set.compare_exchange_strong(false_v, true_v, std::memory_order_seq_cst)){
+    if (this->__is_set.compare_exchange_strong(false_v, true, std::memory_order_seq_cst)){
         std::unique_lock<std::mutex> lock(this->mutex);
         this->conditional_variable.notify_all();
     }

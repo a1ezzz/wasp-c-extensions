@@ -27,13 +27,15 @@ std::list<size_t> wasp::tests_fixtures::sequence_generator<0>() {
     return {};
 };
 
-void ThreadsRunner::start_threads(std::string tag, size_t count, std::function<void()>threaded_fn, bool delayed_start){
+void ThreadsRunner::start_threads(
+    std::string tag, size_t count, std::function<void(size_t)>threaded_fn, bool delayed_start
+){
     std::atomic<bool>* flag = NULL;
     std::mutex* mutex = NULL;
     std::condition_variable* cv = NULL;
     threads_vector _threads;
     tagged_threads::iterator it = this->threads.find(tag);
-    std::function<void()> wrapped_function = threaded_fn;
+    std::function<void(size_t)> delayed_fn;
 
     if (it != this->threads.end()){
         throw std::invalid_argument("The specified threads are started already");
@@ -44,20 +46,32 @@ void ThreadsRunner::start_threads(std::string tag, size_t count, std::function<v
         mutex = new std::mutex();
         cv = new std::condition_variable();
 
-        wrapped_function = [flag, mutex, cv, threaded_fn](){
+        delayed_fn = [flag, mutex, cv, threaded_fn](size_t i){
             while (! flag->load(std::memory_order_seq_cst)){
                 std::unique_lock<std::mutex> lock(*mutex);
                 cv->wait(lock);
             }
-            threaded_fn();
+            threaded_fn(i);
         };
     }
 
     for (size_t i = 0; i < count; i++){
-        _threads.push_back(new std::thread(wrapped_function));
+        _threads.push_back(new std::thread(
+            [i, delayed_start, delayed_fn, threaded_fn](){
+                delayed_start ? delayed_fn(i) : threaded_fn(i);
+            }
+        ));
     }
 
     this->threads.insert(std::make_pair(tag, threads_tuple(_threads, flag, mutex, cv)));
+}
+
+void ThreadsRunner::start_threads(std::string tag, size_t count, std::function<void()>threaded_fn, bool delayed_start){
+    std::function<void(size_t)> wrapped_function = [threaded_fn](size_t i){
+        threaded_fn();
+    };
+
+    this->start_threads(tag, count, wrapped_function, delayed_start);
 };
 
 void ThreadsRunner::resume_threads(std::string tag){

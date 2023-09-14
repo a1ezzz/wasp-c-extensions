@@ -22,22 +22,22 @@
 
 using namespace wasp::cgc;
 
-ResourceSmartLock::ResourceSmartLock():
+ShockSemaphore::ShockSemaphore():
     dead_flag(false),
     usage_counter(1),
     concurrency_liveness_flag(false)
 {}
 
-ResourceSmartLock::~ResourceSmartLock(){
+ShockSemaphore::~ShockSemaphore(){
     assert(this->dead_flag.load(std::memory_order_seq_cst) == true);
     assert(this->usage_counter.load(std::memory_order_seq_cst) == 0);
 };
 
-size_t ResourceSmartLock::counter(){
+size_t ShockSemaphore::counter(){
     return this->usage_counter.load(std::memory_order_seq_cst);
 }
 
-bool ResourceSmartLock::acquire(){
+bool ShockSemaphore::acquire(){
     if (this->dead_flag.load(std::memory_order_seq_cst)){
         return false;
     }
@@ -54,7 +54,7 @@ bool ResourceSmartLock::acquire(){
     return true;
 }
 
-bool ResourceSmartLock::release(){
+bool ShockSemaphore::release(){
     if (this->usage_counter.fetch_sub(1, std::memory_order_seq_cst) > 1){
         return false;
     }
@@ -69,12 +69,12 @@ bool ResourceSmartLock::release(){
     return true;
 }
 
-bool ResourceSmartLock::is_dead(){
+bool ShockSemaphore::is_dead(){
     return this->dead_flag.load(std::memory_order_seq_cst);
 }
 
 SmartPointerBase::SmartPointerBase():
-    pointer_lock(),
+    pointer_semaphore(),
     pointer(NULL)
 {}
 
@@ -83,20 +83,20 @@ SmartPointerBase::~SmartPointerBase(){}
 PointerDestructor* SmartPointerBase::acquire(){
     PointerDestructor* pointer = this->pointer.load(std::memory_order_seq_cst);
 
-    if (pointer && this->pointer_lock.acquire()){
+    if (pointer && this->pointer_semaphore.acquire()){
         return pointer;
     }
     return NULL;
 }
 
 size_t SmartPointerBase::usage_counter(){
-    return this->pointer_lock.counter();
+    return this->pointer_semaphore.counter();
 }
 
 void SmartPointerBase::release(){
     PointerDestructor* pointer = this->pointer.load(std::memory_order_seq_cst);
     assert(pointer);
-    if (this->pointer_lock.release()){
+    if (this->pointer_semaphore.release()){
         pointer->destroyable();
     }
 }
@@ -108,5 +108,5 @@ bool SmartPointerBase::init(PointerDestructor* new_ptr){
 }
 
 bool SmartPointerBase::is_dead(){
-    return this->pointer_lock.is_dead();
+    return this->pointer_semaphore.is_dead();
 }

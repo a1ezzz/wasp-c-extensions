@@ -29,7 +29,8 @@
 
 namespace wasp::cgc {
 
-class ResourceSmartLock{
+class ShockSemaphore
+{
 
     std::atomic<bool>   dead_flag;                  // marks this resource as unavailable
     std::atomic<size_t> usage_counter;              // this counter shows how many pending "releases" there are.
@@ -38,8 +39,8 @@ class ResourceSmartLock{
     // on the fly
 
     public:
-        ResourceSmartLock();
-        virtual ~ResourceSmartLock();
+        ShockSemaphore();
+        virtual ~ShockSemaphore();
 
         virtual bool acquire();  // acknowledge that a shared resource is requested
         // (returns true if the resource is available)
@@ -54,11 +55,11 @@ class ResourceSmartLock{
 
 class SmartPointerBase
 {
-    ResourceSmartLock pointer_lock;
+    ShockSemaphore pointer_semaphore;
     std::atomic<PointerDestructor*> pointer;
 
     public:
-        SmartPointerBase();
+        SmartPointerBase(); // TODO: to the protected section?
         virtual ~SmartPointerBase();
 
         size_t usage_counter();

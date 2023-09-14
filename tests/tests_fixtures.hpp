@@ -57,6 +57,9 @@ class ThreadsRunner
 
     public:
         void start_threads(std::string tag, size_t count, std::function<void()>threaded_fn, bool delayed_start=false);
+        void start_threads(
+            std::string tag, size_t count, std::function<void(size_t)>threaded_fn, bool delayed_start=false
+        );
         void resume_threads(std::string tag);
         void join_threads(std::string tag);
 };
