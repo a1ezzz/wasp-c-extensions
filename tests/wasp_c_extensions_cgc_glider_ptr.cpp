@@ -62,6 +62,7 @@ class TestWaspGliderPtr:
     CPPUNIT_TEST_PARAMETERIZED(advanced_test, {false, true});
     CPPUNIT_TEST(test_heap_value);
     CPPUNIT_TEST_PARAMETERIZED(test_simple_concurrency, wasp::tests_fixtures::sequence_generator<10>());
+    CPPUNIT_TEST(test_context);
     CPPUNIT_TEST_SUITE_END();
 
     void simple_test(){
@@ -148,6 +149,19 @@ class TestWaspGliderPtr:
         this->join_threads("sorted_push_threads");
 
         delete glider_ptr;
+    }
+
+    void test_context(){
+        IntHeapItem* heap_value = new IntHeapItem(0, this->collector());
+	    wasp::cgc::GliderPointer* glider_ptr = new wasp::cgc::GliderPointer(this->collector(), heap_value);
+
+        {
+            wasp::cgc::GliderContext<IntHeapItem> head = glider_ptr->head_context<IntHeapItem>();
+            CPPUNIT_ASSERT(head() == heap_value);
+            CPPUNIT_ASSERT(head() == heap_value);  // no matter how much requests are there
+        }
+
+	    delete glider_ptr;
     }
 };
 

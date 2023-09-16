@@ -57,6 +57,38 @@ class GliderPointerNode:
         void release_node();
 };
 
+template <typename T>
+class GliderContext{
+
+    GliderPointerNode* pointer_node;
+    T* casted_ptr;
+
+    private:
+        void* operator new(size_t){return NULL;}
+        void operator delete(void*){};
+        void* operator new[](size_t){return NULL;};
+
+    public:
+        GliderContext(GliderPointerNode* ptr):
+            pointer_node(ptr),
+            casted_ptr(NULL)
+        {
+            assert(this->pointer_node);
+            this->casted_ptr = dynamic_cast<T*>(this->pointer_node->acquire_ptr());
+            assert(casted_ptr);
+        }
+
+        virtual ~GliderContext(){
+            this->casted_ptr = NULL;
+            this->pointer_node->release_ptr();
+            this->pointer_node->release_node();
+        }
+
+        T* operator()(){
+            return this->casted_ptr;
+        }
+};
+
 class GliderPointer{
 
     ConcurrentGarbageCollector* cgc;
@@ -76,6 +108,11 @@ class GliderPointer{
 
         GliderPointerNode* head();
         bool replace_head(ConcurrentGCItem* next_head, GliderPointerNode* prev_head=NULL);
+
+        template<typename T>
+        GliderContext<T> head_context(){
+            return GliderContext<T>(this->head());
+        }
 };
 
 };  // namespace wasp::cgc
